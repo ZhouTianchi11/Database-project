@@ -3,54 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Product Management | E-Commerce Platform</title>
-    <!-- Tailwind CSS CDN -->
+    <title>Product Management | E-Commerce</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: '#165DFF',
-                        success: '#00B42A',
-                        warning: '#FF7D00',
-                        danger: '#F53F3F',
-                        dark: '#1D2129',
-                        light: '#F2F3F5'
-                    },
-                    fontFamily: {
-                        inter: ['Inter', 'system-ui', 'sans-serif'],
-                    },
-                }
-            }
-        }
-    </script>
-    <style type="text/tailwindcss">
-        @layer utilities {
-            .content-auto {
-                content-visibility: auto;
-            }
-            .card-shadow {
-                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            }
-        }
-    </style>
 </head>
-<body class="font-inter bg-gray-50 min-h-screen">
-    <!-- Navbar -->
-    <nav class="bg-primary text-white shadow-md sticky top-0 z-10">
+<body class="bg-gray-50 font-sans">
+    <!-- Navigation Bar -->
+    <nav class="bg-blue-600 text-white shadow-md">
         <div class="container mx-auto px-4 py-4 flex justify-between items-center">
             <div class="flex items-center gap-2">
                 <i class="fa-solid fa-store text-2xl"></i>
-                <h1 class="text-xl font-bold">E-Commerce Platform</h1>
+                <h1 class="text-xl font-bold">Multi-Vendor E-Commerce</h1>
             </div>
             <div class="flex items-center gap-4">
-                <a href="/" class="hover:opacity-80 transition-opacity">Home</a>
-                <a href="/vendors" class="hover:opacity-80 transition-opacity">Vendors</a>
+                <a href="/" class="hover:opacity-80">Home</a>
+                <a href="/vendors" class="hover:opacity-80">Vendors</a>
                 <a href="/products" class="font-bold">Products</a>
-                <a href="/orders" class="hover:opacity-80 transition-opacity">Orders</a>
+                <a href="/orders" class="hover:opacity-80">Orders</a>
             </div>
         </div>
     </nav>
@@ -58,8 +27,8 @@
     <!-- Main Content -->
     <main class="container mx-auto px-4 py-8">
         <div class="flex justify-between items-center mb-6">
-            <h2 class="text-2xl font-bold text-dark">Product Management</h2>
-            <a href="/" class="text-primary flex items-center gap-1 hover:underline">
+            <h2 class="text-2xl font-bold text-gray-900">Product Management</h2>
+            <a href="/" class="text-blue-600 hover:underline flex items-center gap-1">
                 <i class="fa-solid fa-arrow-left"></i> Back to Home
             </a>
         </div>
@@ -68,7 +37,7 @@
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
-                    <div class="mb-6 p-4 rounded-lg {{ 'bg-success/10 text-success' if category == 'success' else 'bg-danger/10 text-danger' }} flex items-center gap-2">
+                    <div class="mb-6 p-4 rounded-lg flex items-center gap-2 {{ 'bg-green-100 text-green-700' if category == 'success' else 'bg-red-100 text-red-700' }}">
                         <i class="fa-solid {{ 'fa-check-circle' if category == 'success' else 'fa-exclamation-circle' }}"></i>
                         <span>{{ message }}</span>
                     </div>
@@ -77,162 +46,123 @@
         {% endwith %}
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <!-- Add Product Form -->
+            <!-- Add New Product Form -->
             <div class="lg:col-span-1">
-                <div class="bg-white rounded-xl card-shadow p-6 sticky top-24">
-                    <h3 class="text-xl font-semibold text-dark mb-4 flex items-center gap-2">
-                        <i class="fa-solid fa-plus-circle text-primary"></i> Add New Product
+                <div class="bg-white rounded-xl shadow p-6 sticky top-24">
+                    <h3 class="text-xl font-semibold mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-box text-blue-600"></i> Add New Product
                     </h3>
-                    <form action="/add_product" method="POST" class="space-y-4">
+                    <form action="/products/add" method="post" class="space-y-4">
                         <div class="space-y-2">
-                            <label for="vendor_id" class="block text-sm font-medium text-gray-700">Vendor *</label>
-                            <select id="vendor_id" name="vendor_id" 
-                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition"
-                                    required>
-                                <option value="">Select a vendor</option>
-                                {% for vendor in vendors %}
-                                    <option value="{{ vendor.vendor_id }}">{{ vendor.business_name }}</option>
+                            <label class="block text-sm font-medium text-gray-700">Select Vendor *</label>
+                            <select name="vendor_id" required
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                                <option value="">-- Choose a Vendor --</option>
+                                {% for v in vendors %}
+                                    <option value="{{ v.vendor_id }}">{{ v.business_name }}</option>
                                 {% endfor %}
                             </select>
                         </div>
                         <div class="space-y-2">
-                            <label for="product_name" class="block text-sm font-medium text-gray-700">Product Name *</label>
-                            <input type="text" id="product_name" name="product_name" 
-                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition"
-                                   required placeholder="e.g. iPhone 15 Pro">
+                            <label class="block text-sm font-medium text-gray-700">Product Name *</label>
+                            <input type="text" name="product_name" required
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                   placeholder="e.g. iPhone 15 Pro">
                         </div>
                         <div class="space-y-2">
-                            <label for="listed_price" class="block text-sm font-medium text-gray-700">Price ($) *</label>
-                            <input type="number" id="listed_price" name="listed_price" min="0.01" step="0.01"
-                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition"
-                                   required placeholder="999.99">
+                            <label class="block text-sm font-medium text-gray-700">Listed Price ($) *</label>
+                            <input type="number" name="listed_price" step="0.01" min="0.01" value="999.99" required
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
                         </div>
                         <div class="space-y-2">
-                            <label for="stock_quantity" class="block text-sm font-medium text-gray-700">Stock Quantity *</label>
-                            <input type="number" id="stock_quantity" name="stock_quantity" min="0"
-                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition"
-                                   required placeholder="50">
+                            <label class="block text-sm font-medium text-gray-700">Stock Quantity *</label>
+                            <input type="number" name="stock_quantity" min="0" value="50" required
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
                         </div>
                         <div class="space-y-2">
-                            <label for="tag1" class="block text-sm font-medium text-gray-700">Tag 1 (Optional)</label>
-                            <input type="text" id="tag1" name="tag1" 
-                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition"
-                                   placeholder="e.g. Electronics">
+                            <label class="block text-sm font-medium text-gray-700">Tags (Optional)</label>
+                            <div class="grid grid-cols-3 gap-2">
+                                <input type="text" name="tag1" placeholder="Tag 1 (e.g. Digital)"
+                                       class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                                <input type="text" name="tag2" placeholder="Tag 2 (e.g. Phone)"
+                                       class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                                <input type="text" name="tag3" placeholder="Tag 3 (e.g. Apple)"
+                                       class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            </div>
                         </div>
-                        <div class="space-y-2">
-                            <label for="tag2" class="block text-sm font-medium text-gray-700">Tag 2 (Optional)</label>
-                            <input type="text" id="tag2" name="tag2" 
-                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition"
-                                   placeholder="e.g. Phone">
-                        </div>
-                        <div class="space-y-2">
-                            <label for="tag3" class="block text-sm font-medium text-gray-700">Tag 3 (Optional)</label>
-                            <input type="text" id="tag3" name="tag3" 
-                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition"
-                                   placeholder="e.g. Apple">
-                        </div>
-                        <button type="submit" class="w-full px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition flex items-center justify-center gap-2">
-                            <i class="fa-solid fa-save"></i> Save Product
+                        <button type="submit" class="w-full px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-plus"></i> Add Product
                         </button>
                     </form>
                 </div>
             </div>
 
-            <!-- Product Search & List -->
+            <!-- Product List + Filter -->
             <div class="lg:col-span-2">
-                <!-- Search & Filter -->
-                <div class="bg-white rounded-xl card-shadow p-6 mb-6">
-                    <h3 class="text-xl font-semibold text-dark mb-4 flex items-center gap-2">
-                        <i class="fa-solid fa-search text-primary"></i> Product Search & Filter
-                    </h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <!-- Vendor Filter -->
-                        <form action="/products" method="GET" class="space-y-2">
-                            <label class="block text-sm font-medium text-gray-700">Filter by Vendor</label>
-                            <div class="flex gap-2">
-                                <select name="vendor_id" 
-                                        class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition">
+                <div class="bg-white rounded-xl shadow overflow-hidden">
+                    <div class="p-6 border-b border-gray-200">
+                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                            <h3 class="text-xl font-semibold flex items-center gap-2">
+                                <i class="fa-solid fa-box text-blue-600"></i> Product List
+                                <span class="ml-2 text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded-full">{{ products|length }} Products</span>
+                            </h3>
+                            <!-- Filter Bar -->
+                            <form action="/products" method="get" class="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                                <select name="vendor_id"
+                                        class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
                                     <option value="">All Vendors</option>
-                                    {% for vendor in vendors %}
-                                        <option value="{{ vendor.vendor_id }}" {% if selected_vendor == vendor.vendor_id|string %}selected{% endif %}>
-                                            {{ vendor.business_name }}
+                                    {% for v in vendors %}
+                                        <option value="{{ v.vendor_id }}" {% if selected_vendor == v.vendor_id|string %}selected{% endif %}>
+                                            {{ v.business_name }}
                                         </option>
                                     {% endfor %}
                                 </select>
-                                <button type="submit" class="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition">
-                                    <i class="fa-solid fa-filter"></i>
+                                <input type="text" name="keyword" placeholder="Search products..." value="{{ keyword }}"
+                                       class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                                    <i class="fa-solid fa-magnifying-glass"></i> Filter
                                 </button>
-                            </div>
-                        </form>
-
-                        <!-- Keyword Search -->
-                        <form action="/products" method="GET" class="space-y-2">
-                            <label class="block text-sm font-medium text-gray-700">Search by Keyword</label>
-                            <div class="flex gap-2">
-                                <input type="text" name="keyword" value="{{ search_keyword }}"
-                                       class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition"
-                                       placeholder="Product name or tag">
-                                <button type="submit" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition">
-                                    <i class="fa-solid fa-magnifying-glass"></i>
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-
-                <!-- Product List -->
-                <div class="bg-white rounded-xl card-shadow overflow-hidden">
-                    <div class="p-6 border-b border-gray-200">
-                        <h3 class="text-xl font-semibold text-dark flex items-center gap-2">
-                            <i class="fa-solid fa-list text-primary"></i> Product List
-                            <span class="ml-2 text-sm bg-primary/10 text-primary px-2 py-1 rounded-full">
-                                {{ products|length }} Products
-                            </span>
-                        </h3>
+                            </form>
+                        </div>
                     </div>
                     <div class="overflow-x-auto">
                         <table class="w-full">
                             <thead class="bg-gray-50">
                                 <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vendor ID</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price ($)</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tags</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product Name</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vendor</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Price ($)</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Stock</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tags</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-200">
                                 {% if products %}
-                                    {% for product in products %}
-                                        <tr class="hover:bg-gray-50 transition">
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ product.product_id }}</td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">{{ product.product_name }}</td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ product.vendor_id }}</td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${{ product.listed_price }}</td>
+                                    {% for p in products %}
+                                        <tr class="hover:bg-gray-50">
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">{{ p.product_id }}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm">{{ p.product_name }}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm">{{ p.business_name or 'Unknown' }}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm">{{ p.listed_price }}</td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                                <span class="px-2 py-1 {{ 'bg-success/10 text-success' if product.stock_quantity > 0 else 'bg-danger/10 text-danger' }} rounded-full text-xs">
-                                                    {{ product.stock_quantity }}
+                                                <span class="{{ 'text-green-700' if p.stock_quantity > 0 else 'text-red-700' }}">
+                                                    {{ p.stock_quantity }}
                                                 </span>
                                             </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                {% if product.tag1 %}
-                                                    <span class="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs mr-1">{{ product.tag1 }}</span>
-                                                {% endif %}
-                                                {% if product.tag2 %}
-                                                    <span class="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs mr-1">{{ product.tag2 }}</span>
-                                                {% endif %}
-                                                {% if product.tag3 %}
-                                                    <span class="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs">{{ product.tag3 }}</span>
-                                                {% endif %}
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                                {% if p.tag1 %}<span class="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded mr-1">{{ p.tag1 }}</span>{% endif %}
+                                                {% if p.tag2 %}<span class="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded mr-1">{{ p.tag2 }}</span>{% endif %}
+                                                {% if p.tag3 %}<span class="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded">{{ p.tag3 }}</span>{% endif %}
+                                                {% if not p.tag1 and not p.tag2 and not p.tag3 %}<span class="text-gray-400 text-xs">No tags</span>{% endif %}
                                             </td>
                                         </tr>
                                     {% endfor %}
                                 {% else %}
                                     <tr>
                                         <td colspan="6" class="px-6 py-8 text-center text-gray-500">
-                                            <i class="fa-solid fa-box-open text-3xl mb-2"></i>
-                                            <p>No products found. {{ 'Try a different keyword or filter.' if search_keyword or selected_vendor else 'Add your first product on the left!' }}</p>
+                                            <i class="fa-solid fa-box text-3xl mb-2"></i>
+                                            <p>No products found. Add your first product!</p>
                                         </td>
                                     </tr>
                                 {% endif %}
@@ -245,11 +175,9 @@
     </main>
 
     <!-- Footer -->
-    <footer class="bg-dark text-white py-6 mt-12">
+    <footer class="bg-gray-800 text-white py-6 mt-12">
         <div class="container mx-auto px-4 text-center">
-            <p class="opacity-80 text-sm">
-                © 2026 Multi-Vendor E-Commerce Platform | All Rights Reserved
-            </p>
+            <p class="text-sm opacity-80">© 2026 Multi-Vendor E-Commerce Admin Portal</p>
         </div>
     </footer>
 </body>
