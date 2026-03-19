@@ -1,9 +1,7 @@
 import sqlite3
 import datetime
 
-# ========== 关键修改：改成你的项目绝对路径 ==========
 DB_PATH = "C:/Users/86186/Desktop/ecommerce_project/ecommerce.db"
-# ==================================================
 STATUS_PENDING = "PENDING"
 STATUS_SHIPPED = "SHIPPED"
 STATUS_CANCELLED = "CANCELLED"
@@ -14,7 +12,7 @@ def force_rebuild_database():
     cursor = conn.cursor()
     print(f"✅ 连接数据库成功，路径：{DB_PATH}")
 
-    # 第一步：强制删除所有旧表（彻底清空）
+    # 第一步：强制删除所有旧表
     tables = ['transactions', 'orders', 'customers', 'products', 'vendors', 'cart', 'user_accounts']
     for table in tables:
         cursor.execute(f"DROP TABLE IF EXISTS {table}")
