@@ -5,9 +5,7 @@ import datetime
 
 # ========== 基础配置 ==========
 app = Flask(__name__)
-# 登录必须的secret_key，不能删！
 app.secret_key = "ecommerce_web_2026_en"
-# 数据库绝对路径（替换成你的项目路径）
 DB_PATH = "C:/Users/86186/Desktop/ecommerce_project/ecommerce.db"
 # 订单状态常量
 STATUS_PENDING = "PENDING"
