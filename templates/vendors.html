@@ -3,62 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vendor Management | E-Commerce Platform</title>
-    <!-- Tailwind CSS CDN -->
+    <title>Vendor Management | E-Commerce</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: '#165DFF',
-                        success: '#00B42A',
-                        warning: '#FF7D00',
-                        danger: '#F53F3F',
-                        dark: '#1D2129',
-                        light: '#F2F3F5'
-                    },
-                    fontFamily: {
-                        inter: ['Inter', 'system-ui', 'sans-serif'],
-                    },
-                }
-            }
-        }
-    </script>
-    <style type="text/tailwindcss">
-        @layer utilities {
-            .content-auto {
-                content-visibility: auto;
-            }
-            .card-shadow {
-                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            }
-        }
-    </style>
 </head>
-<body class="font-inter bg-gray-50 min-h-screen">
-    <!-- Navbar -->
-    <nav class="bg-primary text-white shadow-md sticky top-0 z-10">
+<body class="bg-gray-50 font-sans">
+    <!-- Navigation Bar -->
+    <nav class="bg-blue-600 text-white shadow-md">
         <div class="container mx-auto px-4 py-4 flex justify-between items-center">
             <div class="flex items-center gap-2">
                 <i class="fa-solid fa-store text-2xl"></i>
-                <h1 class="text-xl font-bold">E-Commerce Platform</h1>
+                <h1 class="text-xl font-bold">Multi-Vendor E-Commerce</h1>
             </div>
             <div class="flex items-center gap-4">
-                <a href="/" class="hover:opacity-80 transition-opacity">Home</a>
+                <a href="/" class="hover:opacity-80">Home</a>
                 <a href="/vendors" class="font-bold">Vendors</a>
-                <a href="/products" class="hover:opacity-80 transition-opacity">Products</a>
-                <a href="/orders" class="hover:opacity-80 transition-opacity">Orders</a>
+                <a href="/products" class="hover:opacity-80">Products</a>
+                <a href="/orders" class="hover:opacity-80">Orders</a>
             </div>
-        </nav>
+        </div>
+    </nav>
 
     <!-- Main Content -->
     <main class="container mx-auto px-4 py-8">
         <div class="flex justify-between items-center mb-6">
-            <h2 class="text-2xl font-bold text-dark">Vendor Management</h2>
-            <a href="/" class="text-primary flex items-center gap-1 hover:underline">
+            <h2 class="text-2xl font-bold text-gray-900">Vendor Management</h2>
+            <a href="/" class="text-blue-600 hover:underline flex items-center gap-1">
                 <i class="fa-solid fa-arrow-left"></i> Back to Home
             </a>
         </div>
@@ -67,7 +37,7 @@
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
-                    <div class="mb-6 p-4 rounded-lg {{ 'bg-success/10 text-success' if category == 'success' else 'bg-danger/10 text-danger' }} flex items-center gap-2">
+                    <div class="mb-6 p-4 rounded-lg flex items-center gap-2 {{ 'bg-green-100 text-green-700' if category == 'success' else 'bg-red-100 text-red-700' }}">
                         <i class="fa-solid {{ 'fa-check-circle' if category == 'success' else 'fa-exclamation-circle' }}"></i>
                         <span>{{ message }}</span>
                     </div>
@@ -75,89 +45,98 @@
             {% endif %}
         {% endwith %}
 
-        <!-- Add Vendor Form -->
-        <div class="bg-white rounded-xl card-shadow p-6 mb-8">
-            <h3 class="text-xl font-semibold text-dark mb-4 flex items-center gap-2">
-                <i class="fa-solid fa-plus-circle text-primary"></i> Add New Vendor
-            </h3>
-            <form action="/add_vendor" method="POST" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div class="space-y-2">
-                    <label for="business_name" class="block text-sm font-medium text-gray-700">Vendor Name *</label>
-                    <input type="text" id="business_name" name="business_name" 
-                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition"
-                           required placeholder="e.g. Tech Electronics Ltd">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Add New Vendor Form -->
+            <div class="lg:col-span-1">
+                <div class="bg-white rounded-xl shadow p-6 sticky top-24">
+                    <h3 class="text-xl font-semibold mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-building text-blue-600"></i> Add New Vendor
+                    </h3>
+                    <form action="/vendors/add" method="post" class="space-y-4">
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium text-gray-700">Business Name *</label>
+                            <input type="text" name="business_name" required
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                   placeholder="e.g. Apple Official Store">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium text-gray-700">Average Rating (0-5) *</label>
+                            <input type="number" name="avg_rating" step="0.1" min="0" max="5" value="4.5" required
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium text-gray-700">Geography/Location *</label>
+                            <input type="text" name="geography" required
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                   placeholder="e.g. Hong Kong">
+                        </div>
+                        <button type="submit" class="w-full px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-plus"></i> Add Vendor
+                        </button>
+                    </form>
                 </div>
-                <div class="space-y-2">
-                    <label for="avg_rating" class="block text-sm font-medium text-gray-700">Vendor Rating (0-5) *</label>
-                    <input type="number" id="avg_rating" name="avg_rating" min="0" max="5" step="0.1"
-                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition"
-                           required placeholder="4.5">
-                </div>
-                <div class="space-y-2">
-                    <label for="geography" class="block text-sm font-medium text-gray-700">Geographic Region *</label>
-                    <input type="text" id="geography" name="geography"
-                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition"
-                           required placeholder="e.g. New York, USA">
-                </div>
-                <div class="md:col-span-3">
-                    <button type="submit" class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition flex items-center gap-2">
-                        <i class="fa-solid fa-save"></i> Save Vendor
-                    </button>
-                </div>
-            </form>
-        </div>
-
-        <!-- Vendor List -->
-        <div class="bg-white rounded-xl card-shadow overflow-hidden">
-            <div class="p-6 border-b border-gray-200">
-                <h3 class="text-xl font-semibold text-dark flex items-center gap-2">
-                    <i class="fa-solid fa-list text-primary"></i> All Vendors
-                </h3>
             </div>
-            <div class="overflow-x-auto">
-                <table class="w-full">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vendor Name</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rating</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Region</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-200">
-                        {% if vendors %}
-                            {% for vendor in vendors %}
-                                <tr class="hover:bg-gray-50 transition">
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ vendor.vendor_id }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">{{ vendor.business_name }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        <span class="px-2 py-1 bg-warning/10 text-warning rounded-full text-xs">
-                                            {{ vendor.avg_rating }}/5
-                                        </span>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ vendor.geography }}</td>
+
+            <!-- Vendor List -->
+            <div class="lg:col-span-2">
+                <div class="bg-white rounded-xl shadow overflow-hidden">
+                    <div class="p-6 border-b border-gray-200">
+                        <h3 class="text-xl font-semibold flex items-center gap-2">
+                            <i class="fa-solid fa-building text-blue-600"></i> Vendor List
+                            <span class="ml-2 text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded-full">{{ vendors|length }} Vendors</span>
+                        </h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Business Name</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rating</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                                 </tr>
-                            {% endfor %}
-                        {% else %}
-                            <tr>
-                                <td colspan="4" class="px-6 py-8 text-center text-gray-500">
-                                    <i class="fa-solid fa-folder-open text-3xl mb-2"></i>
-                                    <p>No vendors found. Add your first vendor above!</p>
-                                </td>
-                            </tr>
-                        {% endif %}
-                    </tbody>
-                </table>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200">
+                                {% if vendors %}
+                                    {% for v in vendors %}
+                                        <tr class="hover:bg-gray-50">
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">{{ v.vendor_id }}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm">{{ v.business_name }}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                                <div class="flex items-center gap-1">
+                                                    <span>{{ v.avg_rating }}</span>
+                                                    <i class="fa-solid fa-star text-yellow-400 text-xs"></i>
+                                                </div>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm">{{ v.geography }}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                                <a href="/products?vendor_id={{ v.vendor_id }}" class="text-blue-600 hover:underline mr-2">
+                                                    <i class="fa-solid fa-box"></i> View Products
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="5" class="px-6 py-8 text-center text-gray-500">
+                                            <i class="fa-solid fa-building text-3xl mb-2"></i>
+                                            <p>No vendors found. Add your first vendor!</p>
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
     </main>
 
     <!-- Footer -->
-    <footer class="bg-dark text-white py-6 mt-12">
+    <footer class="bg-gray-800 text-white py-6 mt-12">
         <div class="container mx-auto px-4 text-center">
-            <p class="opacity-80 text-sm">
-                © 2026 Multi-Vendor E-Commerce Platform | All Rights Reserved
-            </p>
+            <p class="text-sm opacity-80">© 2026 Multi-Vendor E-Commerce Admin Portal</p>
         </div>
     </footer>
 </body>
