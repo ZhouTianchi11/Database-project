@@ -1,13 +1,20 @@
-# Database file path (must match the SQLiteStudio database filename)
-DB_PATH = "ecommerce_platform.db"
+import customtkinter as ctk
 
-# Order status constants
-STATUS_PENDING = "PENDING"    # Pending (modifiable/cancellable)
-STATUS_SHIPPED = "SHIPPED"    # Shipped (non-modifiable)
-STATUS_CANCELLED = "CANCELLED"# Cancelled (non-operational)
+def set_theme():
+    ctk.set_appearance_mode("light")
+    ctk.set_default_color_theme("blue")
 
-# CLI interface color constants (for beautification)
-COLOR_GREEN = "\033[32m"
-COLOR_RED = "\033[31m"
-COLOR_YELLOW = "\033[33m"
-COLOR_RESET = "\033[0m"
+COLOR = {
+    "primary": "#3b82f6",
+    "success": "#10b981",
+    "danger": "#ef4444",
+    "gray": "#64748b",
+    "light": "#f8fafc"
+}
+
+FONT = {
+    "title": ("Arial", 24, "bold"),
+    "subtitle": ("Arial", 16, "bold"),
+    "text": ("Arial", 14),
+    "small": ("Arial", 12)
+}

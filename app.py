@@ -1,580 +1,378 @@
-# 导入所有必要库
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
-import sqlite3
-import datetime
+import customtkinter as ctk
+from tkinter import messagebox, filedialog
+from PIL import Image
+import os
+import database
+from config import COLOR, FONT
 
-# ========== 基础配置 ==========
-app = Flask(__name__)
-app.secret_key = "ecommerce_web_2026_en"
-DB_PATH = "C:/Users/86186/Desktop/ecommerce_project/ecommerce.db"
-# 订单状态常量
-STATUS_PENDING = "PENDING"
-STATUS_SHIPPED = "SHIPPED"
-STATUS_CANCELLED = "CANCELLED"
+class ECommerceApp(ctk.CTk):
+    def __init__(self):
+        super().__init__()
+        self.title("E-Commerce System")
+        self.geometry("1200x800")
+        self.minsize(1000, 700)
 
-# ========== 登录装饰器（确保需要登录的页面必须登录） ==========
-def login_required(f):
-    def wrapper(*args, **kwargs):
-        if 'user_id' not in session:
-            flash('Please login first!', 'error')
-            return redirect(url_for('user_login'))
-        return f(*args, **kwargs)
-    wrapper.__name__ = f.__name__
-    return wrapper
+        self.cart = []
+        self.user_id = None
+        self.role = None
 
-# ========== 数据库连接工具函数 ==========
-def get_db_conn():
-    """获取数据库连接和游标"""
-    conn = sqlite3.connect(DB_PATH)
-    # 让查询结果返回字典格式
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-    return conn, cursor
+        self.after(100, self.show_login)
 
-# ========== 管理端路由 ==========
-@app.route('/')
-def index():
-    """管理端首页"""
-    return render_template('index.html')
+    def clear_frame(self):
+        for widget in self.winfo_children():
+            widget.destroy()
 
-@app.route('/vendors')
-def vendors():
-    """商家管理页面"""
-    conn, cursor = get_db_conn()
-    cursor.execute("SELECT * FROM vendors ORDER BY vendor_id DESC")
-    vendors = cursor.fetchall()
-    conn.close()
-    return render_template('vendors.html', vendors=vendors)
+    def show_login(self):
+        self.clear_frame()
+        frame = ctk.CTkFrame(self, width=420, height=440, corner_radius=20)
+        frame.pack(pady=100)
 
-@app.route('/products')
-def products():
-    """商品管理页面"""
-    conn, cursor = get_db_conn()
-    # 查询商品+关联商家名称
-    cursor.execute("""
-        SELECT p.*, v.business_name 
-        FROM products p
-        LEFT JOIN vendors v ON p.vendor_id = v.vendor_id
-        ORDER BY p.product_id DESC
-    """)
-    products = cursor.fetchall()
-    # 查询所有商家（供新增商品选择）
-    cursor.execute("SELECT * FROM vendors")
-    vendors = cursor.fetchall()
-    conn.close()
-    return render_template('products.html', products=products, vendors=vendors)
+        ctk.CTkLabel(frame, text="Login", font=FONT["title"]).pack(pady=35)
 
-@app.route('/orders')
-def orders():
-    """订单管理页面（修复查询逻辑，确保显示所有订单）"""
-    conn, cursor = get_db_conn()
-    order_list = []
-    
-    try:
-        # 查询所有订单 + 关联客户信息
-        cursor.execute("""
-            SELECT o.*, c.contact, c.shipping_addr
-            FROM orders o
-            LEFT JOIN customers c ON o.customer_id = c.customer_id
-            ORDER BY o.order_id DESC
-        """)
-        orders = cursor.fetchall()
+        id_entry = ctk.CTkEntry(frame, placeholder_text="ID", width=320, height=42)
+        id_entry.pack(pady=8)
+        pwd_entry = ctk.CTkEntry(frame, placeholder_text="Password", show="*", width=320, height=42)
+        pwd_entry.pack(pady=8)
 
-        # 给每个订单补充交易明细（商品信息）
-        for order in orders:
-            cursor.execute("""
-                SELECT t.*, p.product_name 
-                FROM transactions t
-                LEFT JOIN products p ON t.product_id = p.product_id
-                WHERE t.order_id = ?
-            """, (order['order_id'],))
-            transactions = cursor.fetchall()
-            # 转成普通字典，方便前端渲染
-            order_dict = dict(order)
-            order_dict['transactions'] = [dict(t) for t in transactions]
-            order_list.append(order_dict)
-    except Exception as e:
-        print(f"查询订单失败: {e}")
-        flash(f"查询订单出错: {str(e)}", "error")
-    finally:
-        conn.close()
+        def customer_login():
+            uid = id_entry.get().strip()
+            pwd = pwd_entry.get().strip()
+            if not uid or not pwd:
+                messagebox.showwarning("Warning", "Please fill all fields")
+                return
+            if database.login_customer(uid, pwd):
+                self.user_id = uid
+                self.role = "customer"
+                self.show_customer_panel()
+            else:
+                messagebox.showerror("Error", "Login failed")
 
-    # 查询可下单的商品（供左侧创建订单用）
-    conn, cursor = get_db_conn()
-    cursor.execute("SELECT product_id, product_name, listed_price FROM products WHERE stock_quantity > 0")
-    products = cursor.fetchall()
-    product_list = [dict(p) for p in products]
-    conn.close()
+        def vendor_login():
+            uid = id_entry.get().strip()
+            pwd = pwd_entry.get().strip()
+            if not uid or not pwd:
+                messagebox.showwarning("Warning", "Please fill all fields")
+                return
+            if database.login_vendor(uid, pwd):
+                self.user_id = uid
+                self.role = "vendor"
+                self.show_vendor_panel()
+            else:
+                messagebox.showerror("Error", "Login failed")
 
-    return render_template('orders.html', orders=order_list, products=product_list)
+        ctk.CTkButton(frame, text="Customer Login", fg_color=COLOR["primary"],
+                      command=customer_login, width=320, height=42).pack(pady=10)
+        ctk.CTkButton(frame, text="Vendor Login", fg_color=COLOR["success"],
+                      command=vendor_login, width=320, height=42).pack(pady=5)
 
-@app.route('/create_order', methods=['POST'])
-def create_order():
-    """管理端手动创建订单"""
-    try:
-        contact = request.form.get('contact').strip()
-        shipping_addr = request.form.get('shipping_addr').strip()
-        product_id = request.form.get('product_id')
-        buy_quantity = int(request.form.get('buy_quantity'))
+    def show_customer_panel(self):
+        self.clear_frame()
+        top_bar = ctk.CTkFrame(self, height=70)
+        top_bar.pack(fill="x")
 
-        if not contact or not shipping_addr or not product_id or buy_quantity < 1:
-            flash('All fields are required!', 'error')
-            return redirect(url_for('orders'))
+        ctk.CTkLabel(top_bar, text="Shopping Mall", font=FONT["title"]).pack(side="left", padx=30)
+        ctk.CTkButton(top_bar, text="Cart", fg_color=COLOR["success"],
+                      command=self.show_cart_panel).pack(side="right", padx=10)
+        ctk.CTkButton(top_bar, text="Logout", fg_color=COLOR["danger"],
+                      command=self.show_login).pack(side="right")
 
-        conn, cursor = get_db_conn()
-        # 检查商品库存
-        cursor.execute("SELECT stock_quantity, listed_price, vendor_id FROM products WHERE product_id = ?", (product_id,))
-        product = cursor.fetchone()
-        if not product:
-            flash('Product not found!', 'error')
-            conn.close()
-            return redirect(url_for('orders'))
-        
-        if product['stock_quantity'] < buy_quantity:
-            flash(f'Not enough stock! Current stock: {product["stock_quantity"]}', 'error')
-            conn.close()
-            return redirect(url_for('orders'))
+        scroll = ctk.CTkScrollableFrame(self)
+        scroll.pack(fill="both", expand=True, padx=20, pady=15)
 
-        # 查找/创建客户
-        cursor.execute("SELECT customer_id FROM customers WHERE contact = ?", (contact,))
-        customer = cursor.fetchone()
-        if customer:
-            customer_id = customer['customer_id']
+        products = database.get_all_products()
+        if not products:
+            ctk.CTkLabel(scroll, text="No products available", text_color=COLOR["gray"]).pack(pady=50)
+            return
+
+        for p in products:
+            card = ctk.CTkFrame(scroll, height=150, corner_radius=12)
+            card.pack(fill="x", pady=10, padx=10)
+
+            try:
+                img_path = p.get("image_path", "")
+                img_path = img_path.strip() if img_path else ""
+                if img_path and os.path.exists(img_path):
+                    img = Image.open(img_path).convert("RGB").resize((100, 100))
+                    ctk_img = ctk.CTkImage(img, size=(100, 100))
+                    img_label = ctk.CTkLabel(card, image=ctk_img, text="")
+                    img_label.place(x=20, y=25)
+                    card.ctk_img = ctk_img
+            except Exception as e:
+                print(f"Image load error: {e}")
+                pass
+
+            ctk.CTkLabel(card, text=p["product_name"], font=FONT["subtitle"]).place(x=140, y=30)
+            ctk.CTkLabel(card, text=f"$ {p['price']}", text_color=COLOR["primary"]).place(x=140, y=65)
+            ctk.CTkLabel(card, text=f"Stock: {p['stock']}").place(x=140, y=95)
+
+            qty_entry = ctk.CTkEntry(card, width=60)
+            qty_entry.insert(0, "1")
+            qty_entry.place(x=300, y=65)
+
+            def add_to_cart(pid, name, price):
+                try:
+                    qty = int(qty_entry.get())
+                    if qty <= 0:
+                        messagebox.showerror("Error", "Quantity must be greater than 0")
+                        return
+                    self.cart.append({
+                        "product_id": pid,
+                        "name": name,
+                        "price": price,
+                        "quantity": qty
+                    })
+                    messagebox.showinfo("Success", "Added to cart")
+                except ValueError:
+                    messagebox.showerror("Error", "Invalid quantity")
+
+            ctk.CTkButton(card, text="Add to Cart",
+                          command=lambda pid=p["product_id"], n=p["product_name"], p=p["price"]:
+                          add_to_cart(pid, n, p)).place(x=380, y=65)
+
+    def show_cart_panel(self):
+        self.clear_frame()
+        top_bar = ctk.CTkFrame(self, height=70)
+        top_bar.pack(fill="x")
+
+        ctk.CTkLabel(top_bar, text="Shopping Cart", font=FONT["title"]).pack(side="left", padx=30)
+        ctk.CTkButton(top_bar, text="Back", command=self.show_customer_panel).pack(side="left", padx=10)
+        ctk.CTkButton(top_bar, text="Logout", fg_color=COLOR["danger"], command=self.show_login).pack(side="right")
+
+        scroll = ctk.CTkScrollableFrame(self)
+        scroll.pack(fill="both", expand=True, padx=20, pady=20)
+
+        total = 0
+        if not self.cart:
+            ctk.CTkLabel(scroll, text="Your cart is empty", text_color=COLOR["gray"]).pack(pady=50)
         else:
-            cursor.execute("INSERT INTO customers (contact, shipping_addr) VALUES (?, ?)", (contact, shipping_addr))
-            customer_id = cursor.lastrowid
+            for item in self.cart:
+                row = ctk.CTkFrame(scroll)
+                row.pack(fill="x", pady=5, padx=10)
+                ctk.CTkLabel(row, text=item["name"], width=250).grid(row=0, column=0, padx=15, pady=10)
+                ctk.CTkLabel(row, text=f"$ {item['price']} x {item['quantity']}", width=150).grid(row=0, column=1)
+                total += item["price"] * item["quantity"]
 
-        # 计算总价
-        total_price = product['listed_price'] * buy_quantity
+            ctk.CTkLabel(scroll, text=f"Total: $ {round(total,2)}", font=FONT["subtitle"]).pack(pady=15)
 
-        # 开启事务
-        conn.execute("BEGIN TRANSACTION")
-        # 扣库存
-        cursor.execute("UPDATE products SET stock_quantity = stock_quantity - ? WHERE product_id = ?", (buy_quantity, product_id))
-        # 创建订单（默认user_id=1，测试用）
-        cursor.execute("""
-            INSERT INTO orders (customer_id, user_id, total_price, status, create_time)
-            VALUES (?, 1, ?, ?, datetime('now', 'localtime'))
-        """, (customer_id, total_price, STATUS_PENDING))
-        order_id = cursor.lastrowid
-        # 创建交易明细
-        cursor.execute("""
-            INSERT INTO transactions (order_id, product_id, vendor_id, buy_quantity, single_total)
-            VALUES (?, ?, ?, ?, ?)
-        """, (order_id, product_id, product['vendor_id'], buy_quantity, total_price))
-        
-        conn.commit()
-        flash(f'Order #{order_id} created successfully!', 'success')
-    except Exception as e:
-        if 'conn' in locals():
-            conn.rollback()
-        print(f"创建订单失败: {e}")
-        flash(f'Failed to create order: {str(e)}', 'error')
-    finally:
-        if 'conn' in locals():
-            conn.close()
-    
-    return redirect(url_for('orders'))
+            def checkout():
+                if database.create_order(self.user_id, self.cart):
+                    self.cart.clear()
+                    self.show_customer_panel()
 
-@app.route('/orders/ship/<int:order_id>')
-def ship_order(order_id):
-    """标记订单为已发货"""
-    try:
-        conn, cursor = get_db_conn()
-        cursor.execute("UPDATE orders SET status = ? WHERE order_id = ?", (STATUS_SHIPPED, order_id))
-        conn.commit()
-        flash(f'Order #{order_id} marked as shipped!', 'success')
-    except Exception as e:
-        flash(f'Failed to ship order: {str(e)}', 'error')
-    finally:
-        conn.close()
-    return redirect(url_for('orders'))
+            ctk.CTkButton(scroll, text="Checkout", fg_color=COLOR["success"], command=checkout).pack()
 
-@app.route('/cancel_order/<int:order_id>')
-def cancel_order(order_id):
-    """取消订单"""
-    try:
-        conn, cursor = get_db_conn()
-        # 回滚库存
-        cursor.execute("""
-            SELECT t.product_id, t.buy_quantity 
-            FROM transactions t 
-            WHERE t.order_id = ?
-        """, (order_id,))
-        transactions = cursor.fetchall()
-        for t in transactions:
-            cursor.execute("UPDATE products SET stock_quantity = stock_quantity + ? WHERE product_id = ?", (t['buy_quantity'], t['product_id']))
-        
-        # 更新订单状态
-        cursor.execute("UPDATE orders SET status = ? WHERE order_id = ?", (STATUS_CANCELLED, order_id))
-        conn.commit()
-        flash(f'Order #{order_id} cancelled! Stock restored.', 'success')
-    except Exception as e:
-        conn.rollback()
-        flash(f'Failed to cancel order: {str(e)}', 'error')
-    finally:
-        conn.close()
-    return redirect(url_for('orders'))
+    def show_vendor_panel(self):
+        self.clear_frame()
+        top_bar = ctk.CTkFrame(self, height=70)
+        top_bar.pack(fill="x")
 
-@app.route('/get_order_details/<int:order_id>')
-def get_order_details(order_id):
-    """获取订单详情（供模态框）"""
-    try:
-        conn, cursor = get_db_conn()
-        # 查询订单基本信息
-        cursor.execute("""
-            SELECT o.*, c.contact, c.shipping_addr
-            FROM orders o
-            LEFT JOIN customers c ON o.customer_id = c.customer_id
-            WHERE o.order_id = ?
-        """, (order_id,))
-        order_info = cursor.fetchone()
-        if not order_info:
-            return jsonify({'error': 'Order not found!'})
-        
-        # 查询交易明细
-        cursor.execute("""
-            SELECT t.*, p.product_name 
-            FROM transactions t
-            LEFT JOIN products p ON t.product_id = p.product_id
-            WHERE t.order_id = ?
-        """, (order_id,))
-        transactions = cursor.fetchall()
-        
-        conn.close()
-        return jsonify({
-            'order_info': dict(order_info),
-            'transactions': [dict(t) for t in transactions]
-        })
-    except Exception as e:
-        return jsonify({'error': str(e)})
+        ctk.CTkLabel(top_bar, text="Vendor Dashboard", font=FONT["title"]).pack(side="left", padx=30)
+        ctk.CTkButton(top_bar, text="Logout", fg_color=COLOR["danger"], command=self.show_login).pack(side="right")
 
-# ========== 用户端路由 ==========
-@app.route('/user/login', methods=['GET', 'POST'])
-def user_login():
-    """用户登录页"""
-    if request.method == 'POST':
-        username = request.form.get('username', '').strip()
-        password = request.form.get('password', '').strip()
-        
-        if not username or not password:
-            return render_template('user_login.html', error='Username and password are required!')
-        
-        # 验证账号密码
-        conn, cursor = get_db_conn()
-        cursor.execute("SELECT user_id, username FROM user_accounts WHERE username = ? AND password = ?", (username, password))
-        user = cursor.fetchone()
-        conn.close()
-        
-        if user:
-            # 登录成功，保存session
-            session['user_id'] = user['user_id']
-            session['username'] = user['username']
-            flash(f'Welcome back, {user["username"]}!', 'success')
-            return redirect(url_for('user_shop'))
+        scroll = ctk.CTkScrollableFrame(self)
+        scroll.pack(fill="both", expand=True, padx=20, pady=15)
+
+        add_frame = ctk.CTkFrame(scroll, corner_radius=12)
+        add_frame.pack(fill="x", pady=15)
+        ctk.CTkLabel(add_frame, text="Add New Product", font=FONT["subtitle"]).pack(pady=10)
+
+        img_path = ctk.StringVar()
+        def select_image():
+            f = filedialog.askopenfilename(filetypes=[("Images","*.png *.jpg")])
+            if f:
+                img_path.set(f)
+
+        input_frame = ctk.CTkFrame(add_frame, fg_color="transparent")
+        input_frame.pack(pady=10)
+        name_entry = ctk.CTkEntry(input_frame, placeholder_text="Name", width=140)
+        price_entry = ctk.CTkEntry(input_frame, placeholder_text="Price", width=100)
+        stock_entry = ctk.CTkEntry(input_frame, placeholder_text="Stock", width=100)
+        t1 = ctk.CTkEntry(input_frame, placeholder_text="Tag1", width=100)
+        t2 = ctk.CTkEntry(input_frame, placeholder_text="Tag2", width=100)
+        t3 = ctk.CTkEntry(input_frame, placeholder_text="Tag3", width=100)
+
+        for i, w in enumerate([name_entry, price_entry, stock_entry, t1, t2, t3]):
+            w.grid(row=0, column=i, padx=5)
+
+        ctk.CTkButton(input_frame, text="Image", command=select_image).grid(row=0, column=6, padx=5)
+
+        def add_product():
+            ok = database.add_product(
+                self.user_id, name_entry.get(), price_entry.get(), stock_entry.get(),
+                t1.get(), t2.get(), t3.get(), img_path.get()
+            )
+            if ok:
+                messagebox.showinfo("Success", "Product added")
+                self.show_vendor_panel()
+            else:
+                messagebox.showerror("Error", "Failed to add product")
+
+        ctk.CTkButton(input_frame, text="Add", fg_color=COLOR["success"], command=add_product).grid(row=0, column=7, padx=5)
+
+        ctk.CTkLabel(scroll, text="My Products", font=FONT["subtitle"]).pack(pady=15)
+        products = database.get_vendor_products(self.user_id)
+        for p in products:
+            row = ctk.CTkFrame(scroll, corner_radius=8, height=80)
+            row.pack(fill="x", pady=8, padx=10)
+
+            try:
+                img_path = p.get("image_path", "")
+                img_path = img_path.strip() if img_path else ""
+                if img_path and os.path.exists(img_path):
+                    img = Image.open(img_path).convert("RGB").resize((60, 60))
+                    ctk_img = ctk.CTkImage(img, size=(60, 60))
+                    img_label = ctk.CTkLabel(row, image=ctk_img, text="")
+                    img_label.grid(row=0, column=0, padx=10, pady=10)
+                    row.ctk_img = ctk_img
+            except Exception as e:
+                print(f"Vendor image error: {e}")
+                pass
+
+            ctk.CTkLabel(row, text=p["product_name"], font=FONT["text"], width=180).grid(row=0, column=1, padx=5, pady=10)
+            ctk.CTkLabel(row, text=f"$ {p['price']}", font=FONT["text"], width=80).grid(row=0, column=2, padx=5, pady=10)
+            ctk.CTkLabel(row, text=f"Stock: {p['stock']}", font=FONT["text"], width=80).grid(row=0, column=3, padx=5, pady=10)
+
+            def edit(pid):
+                self.open_edit_window(pid)
+            def delete(pid):
+                if messagebox.askyesno("Confirm", "Delete this product?"):
+                    if database.delete_product(pid):
+                        self.show_vendor_panel()
+
+            ctk.CTkButton(row, text="Edit", fg_color=COLOR["primary"],
+                          command=lambda pid=p["product_id"]: edit(pid)).grid(row=0, column=4, padx=5, pady=10)
+            ctk.CTkButton(row, text="Delete", fg_color=COLOR["danger"],
+                          command=lambda pid=p["product_id"]: delete(pid)).grid(row=0, column=5, padx=5, pady=10)
+
+        ctk.CTkLabel(scroll, text="Customer Orders", font=FONT["subtitle"]).pack(pady=20)
+        orders = database.get_vendor_orders_detailed(self.user_id)
+
+        if not orders:
+            ctk.CTkLabel(scroll, text="No orders yet", text_color=COLOR["gray"]).pack(pady=10)
         else:
-            return render_template('user_login.html', error='Invalid username or password!')
-    
-    # GET请求，显示登录页
-    return render_template('user_login.html')
+            for order in orders:
+                order_card = ctk.CTkFrame(scroll, corner_radius=8)
+                order_card.pack(fill="x", pady=8, padx=10)
 
-@app.route('/user/logout')
-def user_logout():
-    """用户退出登录"""
-    session.pop('user_id', None)
-    session.pop('username', None)
-    flash('You have been logged out!', 'success')
-    return redirect(url_for('user_login'))
+                header_frame = ctk.CTkFrame(order_card, fg_color="transparent")
+                header_frame.pack(fill="x", padx=10, pady=5)
 
-@app.route('/user/shop')
-@login_required
-def user_shop():
-    """用户商品浏览页"""
-    conn, cursor = get_db_conn()
-    # 支持搜索
-    keyword = request.args.get('keyword', '').strip()
-    if keyword:
-        cursor.execute("""
-            SELECT * FROM products 
-            WHERE product_name LIKE ? AND stock_quantity > 0
-            ORDER BY product_id DESC
-        """, (f'%{keyword}%',))
-    else:
-        cursor.execute("SELECT * FROM products WHERE stock_quantity > 0 ORDER BY product_id DESC")
-    
-    products = cursor.fetchall()
-    product_list = [dict(p) for p in products]
-    conn.close()
-    
-    return render_template('user_shop.html', 
-                           products=product_list, 
-                           keyword=keyword,
-                           user={'username': session['username']},
-                           cart_count=len(get_user_cart(session['user_id'])))
+                ctk.CTkLabel(header_frame, text=f"Order #{order['order_id']}", font=FONT["subtitle"]).grid(row=0, column=0, padx=10, sticky="w")
+                ctk.CTkLabel(header_frame, text=f"Customer: {order['customer_name']}").grid(row=0, column=1, padx=10)
+                ctk.CTkLabel(header_frame, text=f"Time: {order['order_time']}").grid(row=0, column=2, padx=10)
+                ctk.CTkLabel(header_frame, text=f"Status: {order['status']}", text_color=COLOR["success"]).grid(row=0, column=3, padx=10)
+                ctk.CTkLabel(header_frame, text=f"Total: $ {round(order['total_price'],2)}", font=FONT["subtitle"], text_color=COLOR["primary"]).grid(row=0, column=4, padx=10, sticky="e")
 
-@app.route('/user/cart')
-@login_required
-def cart_view():
-    """用户购物车页"""
-    user_id = session['user_id']
-    cart_items = get_user_cart(user_id)
-    # 计算总价
-    total_price = sum(item['total'] for item in cart_items)
-    
-    return render_template('user_cart.html', 
-                           cart_items=cart_items,
-                           total_price=total_price,
-                           user={'username': session['username']})
+                expand_btn = ctk.CTkButton(header_frame, text="▼ Details", width=80,
+                                         command=lambda f=order_card: self.toggle_order_details(f))
+                expand_btn.grid(row=0, column=5, padx=10)
 
-@app.route('/user/cart/add', methods=['POST'])
-@login_required
-def cart_add():
-    """添加商品到购物车"""
-    try:
-        user_id = session['user_id']
-        product_id = request.form.get('product_id')
-        quantity = int(request.form.get('quantity', 1))
-        
-        if quantity < 1:
-            flash('Quantity must be at least 1!', 'error')
-            return redirect(url_for('user_shop'))
-        
-        conn, cursor = get_db_conn()
-        # 检查商品库存
-        cursor.execute("SELECT stock_quantity, product_name, listed_price FROM products WHERE product_id = ?", (product_id,))
-        product = cursor.fetchone()
-        if not product:
-            flash('Product not found!', 'error')
-            conn.close()
-            return redirect(url_for('user_shop'))
-        
-        if product['stock_quantity'] < quantity:
-            flash(f'Not enough stock for {product["product_name"]}! Current stock: {product["stock_quantity"]}', 'error')
-            conn.close()
-            return redirect(url_for('user_shop'))
-        
-        # 检查购物车是否已有该商品
-        cursor.execute("SELECT quantity FROM cart WHERE user_id = ? AND product_id = ?", (user_id, product_id))
-        existing = cursor.fetchone()
-        if existing:
-            # 更新数量
-            new_quantity = existing['quantity'] + quantity
-            cursor.execute("UPDATE cart SET quantity = ? WHERE user_id = ? AND product_id = ?", (new_quantity, user_id, product_id))
+                detail_frame = ctk.CTkFrame(order_card)
+                detail_frame.pack(fill="x", padx=20, pady=5)
+                detail_frame.pack_forget()
+
+                for item in order["items"]:
+                    item_row = ctk.CTkFrame(detail_frame, fg_color="transparent")
+                    item_row.pack(fill="x", padx=5, pady=2)
+                    ctk.CTkLabel(item_row, text=item["product_name"], width=200).grid(row=0, column=0, padx=10)
+                    ctk.CTkLabel(item_row, text=f"$ {item['price']}", width=80).grid(row=0, column=1)
+                    ctk.CTkLabel(item_row, text=f"Qty: {item['quantity']}", width=80).grid(row=0, column=2)
+                    ctk.CTkLabel(item_row, text=f"Subtotal: $ {round(item['price']*item['quantity'],2)}", width=120).grid(row=0, column=3)
+
+                setattr(order_card, "detail_frame", detail_frame)
+                setattr(order_card, "expand_btn", expand_btn)
+
+    def toggle_order_details(self, card):
+        frame = card.detail_frame
+        btn = card.expand_btn
+        if frame.winfo_ismapped():
+            frame.pack_forget()
+            btn.configure(text="▼ Details")
         else:
-            # 新增购物车项
-            cursor.execute("INSERT INTO cart (user_id, product_id, quantity) VALUES (?, ?, ?)", (user_id, product_id, quantity))
-        
-        conn.commit()
-        flash(f'Added {quantity} x {product["product_name"]} to cart!', 'success')
-    except Exception as e:
-        conn.rollback()
-        flash(f'Failed to add to cart: {str(e)}', 'error')
-    finally:
-        conn.close()
-    
-    return redirect(url_for('user_shop'))
+            frame.pack(fill="x", padx=20, pady=5)
+            btn.configure(text="▲ Hide")
 
-@app.route('/user/cart/update', methods=['POST'])
-@login_required
-def cart_update():
-    """更新购物车商品数量"""
-    try:
-        user_id = session['user_id']
-        cart_id = request.form.get('cart_id')
-        quantity = int(request.form.get('quantity', 1))
-        
-        if quantity < 1:
-            flash('Quantity must be at least 1!', 'error')
-            return redirect(url_for('cart_view'))
-        
-        conn, cursor = get_db_conn()
-        # 检查商品库存
-        cursor.execute("""
-            SELECT p.stock_quantity 
-            FROM cart c
-            LEFT JOIN products p ON c.product_id = p.product_id
-            WHERE c.cart_id = ? AND c.user_id = ?
-        """, (cart_id, user_id))
-        product = cursor.fetchone()
-        if not product:
-            flash('Cart item not found!', 'error')
-            conn.close()
-            return redirect(url_for('cart_view'))
-        
-        if product['stock_quantity'] < quantity:
-            flash(f'Not enough stock! Current stock: {product["stock_quantity"]}', 'error')
-            conn.close()
-            return redirect(url_for('cart_view'))
-        
-        # 更新数量
-        cursor.execute("UPDATE cart SET quantity = ? WHERE cart_id = ? AND user_id = ?", (quantity, cart_id, user_id))
-        conn.commit()
-        flash('Cart updated!', 'success')
-    except Exception as e:
-        conn.rollback()
-        flash(f'Failed to update cart: {str(e)}', 'error')
-    finally:
-        conn.close()
-    
-    return redirect(url_for('cart_view'))
+    def open_edit_window(self, pid):
+        try:
+            products = database.get_vendor_products(self.user_id)
+            prod = next((p for p in products if p["product_id"] == pid), None)
+            if not prod:
+                messagebox.showerror("Error", "Product not found")
+                return
 
-@app.route('/user/cart/delete/<int:cart_id>')
-@login_required
-def cart_delete(cart_id):
-    """删除购物车商品"""
-    try:
-        user_id = session['user_id']
-        conn, cursor = get_db_conn()
-        cursor.execute("DELETE FROM cart WHERE cart_id = ? AND user_id = ?", (cart_id, user_id))
-        conn.commit()
-        flash('Item removed from cart!', 'success')
-    except Exception as e:
-        flash(f'Failed to remove item: {str(e)}', 'error')
-    finally:
-        conn.close()
-    
-    return redirect(url_for('cart_view'))
+            win = ctk.CTkToplevel(self)
+            win.title("Edit Product")
+            win.geometry("600x700")
+            win.transient(self)
+            win.grab_set()
 
-@app.route('/user/cart/checkout', methods=['POST'])
-@login_required
-def cart_checkout():
-    """购物车结算（核心修复：确保订单能写入数据库）"""
-    user_id = session['user_id']
-    conn, cursor = get_db_conn()
-    
-    try:
-        print("✅ 接收到结算请求，开始处理...")
-        # 1. 获取用户购物车
-        cart_items = get_user_cart(user_id)
-        if not cart_items:
-            flash('Your cart is empty!', 'error')
-            conn.close()
-            return redirect(url_for('cart_view'))
-        
-        # 2. 获取用户收货信息
-        cursor.execute("SELECT contact, shipping_addr FROM user_accounts WHERE user_id = ?", (user_id,))
-        user_info = cursor.fetchone()
-        if not user_info or not user_info['contact'] or not user_info['shipping_addr']:
-            flash('Please complete your contact and shipping address first!', 'error')
-            conn.close()
-            return redirect(url_for('cart_view'))
-        contact, shipping_addr = user_info['contact'], user_info['shipping_addr']
-        
-        # 3. 查找/创建客户
-        cursor.execute("SELECT customer_id FROM customers WHERE contact = ?", (contact,))
-        customer = cursor.fetchone()
-        if customer:
-            customer_id = customer['customer_id']
-        else:
-            cursor.execute("INSERT INTO customers (contact, shipping_addr) VALUES (?, ?)", (contact, shipping_addr))
-            customer_id = cursor.lastrowid
-        
-        # 4. 计算总价
-        total_price = sum(item['total'] for item in cart_items)
-        print(f"✅ 订单总价：{total_price}，客户ID：{customer_id}")
-        
-        # 5. 开启事务（确保原子性）
-        conn.execute("BEGIN TRANSACTION")
-        
-        # 6. 扣减库存 + 验证库存
-        for item in cart_items:
-            product_id = item['product_id']
-            quantity = item['quantity']
-            # 再次检查库存（防止并发问题）
-            cursor.execute("SELECT stock_quantity, vendor_id FROM products WHERE product_id = ?", (product_id,))
-            product = cursor.fetchone()
-            if product['stock_quantity'] < quantity:
-                raise Exception(f'Not enough stock for {item["product_name"]}! Current stock: {product["stock_quantity"]}')
-            # 扣库存
-            cursor.execute("UPDATE products SET stock_quantity = stock_quantity - ? WHERE product_id = ?", (quantity, product_id))
-            item['vendor_id'] = product['vendor_id']  # 保存商家ID，用于交易明细
-        
-        # 7. 创建订单
-        cursor.execute("""
-            INSERT INTO orders (customer_id, user_id, total_price, status, create_time)
-            VALUES (?, ?, ?, ?, datetime('now', 'localtime'))
-        """, (customer_id, user_id, total_price, STATUS_PENDING))
-        order_id = cursor.lastrowid
-        print(f"✅ 生成订单ID：{order_id}")
-        
-        # 8. 创建交易明细
-        for item in cart_items:
-            cursor.execute("""
-                INSERT INTO transactions (order_id, product_id, vendor_id, buy_quantity, single_total)
-                VALUES (?, ?, ?, ?, ?)
-            """, (order_id, item['product_id'], item['vendor_id'], item['quantity'], item['total']))
-        
-        # 9. 清空购物车
-        cursor.execute("DELETE FROM cart WHERE user_id = ?", (user_id,))
-        
-        # 提交事务
-        conn.commit()
-        print(f"✅ 订单 {order_id} 创建成功！")
-        flash(f'Order #{order_id} created successfully! Thank you for your purchase!', 'success')
-        return redirect(url_for('user_shop'))
-    
-    except Exception as e:
-        # 出错回滚所有操作
-        conn.rollback()
-        print(f"❌ 结算失败：{str(e)}")
-        flash(f'Failed to create order: {str(e)}', 'error')
-        return redirect(url_for('cart_view'))
-    finally:
-        conn.close()
+            img_path = ctk.StringVar(value=prod.get("image_path", "") or "")
+            def select_image():
+                f = filedialog.askopenfilename(filetypes=[("Images","*.png *.jpg")])
+                if f:
+                    img_path.set(f)
 
-# ========== 工具函数：获取用户购物车 ==========
-def get_user_cart(user_id):
-    """获取用户购物车（带商品详情和总价）"""
-    conn, cursor = get_db_conn()
-    cursor.execute("""
-        SELECT c.cart_id, c.product_id, c.quantity, p.product_name, p.listed_price, p.stock_quantity
-        FROM cart c
-        LEFT JOIN products p ON c.product_id = p.product_id
-        WHERE c.user_id = ?
-    """, (user_id,))
-    cart_items = cursor.fetchall()
-    conn.close()
-    
-    # 转换格式 + 计算每个商品总价
-    result = []
-    for item in cart_items:
-        item_dict = dict(item)
-        item_dict['total'] = item_dict['listed_price'] * item_dict['quantity']
-        result.append(item_dict)
-    return result
+            ctk.CTkLabel(win, text="Product Name").pack(pady=5)
+            name_entry = ctk.CTkEntry(win)
+            name_entry.insert(0, str(prod["product_name"]))
+            name_entry.pack(pady=5)
 
-# ========== 调试路由（可选） ==========
-@app.route('/debug/orders')
-def debug_orders():
-    """调试用：查看所有订单原始数据"""
-    conn, cursor = get_db_conn()
-    cursor.execute("SELECT * FROM orders ORDER BY order_id DESC")
-    orders = cursor.fetchall()
-    conn.close()
-    return jsonify([dict(o) for o in orders])
+            ctk.CTkLabel(win, text="Price").pack(pady=5)
+            price_entry = ctk.CTkEntry(win)
+            price_entry.insert(0, str(prod["price"]))
+            price_entry.pack(pady=5)
 
-@app.route('/test/create_order')
-@login_required
-def test_create_order():
-    """手动创建测试订单（快速验证）"""
-    user_id = session['user_id']
-    conn, cursor = get_db_conn()
-    
-    try:
-        # 创建测试订单（商品ID=1，数量=1）
-        cursor.execute("INSERT INTO orders (customer_id, user_id, total_price, status, create_time) VALUES (1, ?, 999.99, 'PENDING', datetime('now'))", (user_id,))
-        order_id = cursor.lastrowid
-        cursor.execute("INSERT INTO transactions (order_id, product_id, vendor_id, buy_quantity, single_total) VALUES (?, 1, 1, 1, 999.99)", (order_id,))
-        conn.commit()
-        flash(f'Test order #{order_id} created!', 'success')
-    except Exception as e:
-        flash(f'Failed to create test order: {str(e)}', 'error')
-    finally:
-        conn.close()
-    
-    return redirect(url_for('orders'))
+            ctk.CTkLabel(win, text="Stock").pack(pady=5)
+            stock_entry = ctk.CTkEntry(win)
+            stock_entry.insert(0, str(prod["stock"]))
+            stock_entry.pack(pady=5)
 
-# ========== 启动应用 ==========
-if __name__ == '__main__':
-    # 开启调试模式，修改代码自动重启
-    app.run(debug=True, host='0.0.0.0', port=5000)
+            t1 = ctk.CTkEntry(win)
+            t1.insert(0, str(prod.get("tag1", "")))
+            t2 = ctk.CTkEntry(win)
+            t2.insert(0, str(prod.get("tag2", "")))
+            t3 = ctk.CTkEntry(win)
+            t3.insert(0, str(prod.get("tag3", "")))
+
+            ctk.CTkLabel(win, text="Tag 1").pack(pady=5)
+            t1.pack(pady=5)
+            ctk.CTkLabel(win, text="Tag 2").pack(pady=5)
+            t2.pack(pady=5)
+            ctk.CTkLabel(win, text="Tag 3").pack(pady=5)
+            t3.pack(pady=5)
+
+            ctk.CTkEntry(win, textvariable=img_path, width=400).pack(pady=5)
+            ctk.CTkButton(win, text="Select Image", command=select_image).pack(pady=5)
+
+            def save_update():
+                try:
+                    price_val = float(price_entry.get().strip())
+                    stock_val = int(stock_entry.get().strip())
+                    name_val = name_entry.get().strip()
+                    if not name_val:
+                        messagebox.showwarning("Warning", "Product name cannot be empty")
+                        return
+
+                    ok = database.update_product(
+                        pid, name_val, price_val, stock_val,
+                        t1.get().strip(), t2.get().strip(), t3.get().strip(), img_path.get().strip()
+                    )
+                    if ok:
+                        messagebox.showinfo("Success", "Updated successfully")
+                        win.destroy()
+                        self.show_vendor_panel()
+                    else:
+                        messagebox.showerror("Error", "Update failed")
+                except ValueError:
+                    messagebox.showerror("Error", "Price and stock must be numbers")
+                except Exception as e:
+                    messagebox.showerror("Error", f"Error: {str(e)}")
+
+            ctk.CTkButton(win, text="Save", fg_color=COLOR["success"], command=save_update).pack(pady=20)
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Open window failed: {str(e)}")
+
+if __name__ == "__main__":
+    app = ECommerceApp()
+    app.mainloop()
