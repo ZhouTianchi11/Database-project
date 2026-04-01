@@ -1,13 +1,13 @@
-import mysql.connector
-from mysql.connector import Error
+import pymysql
+from pymysql import Error
 from tkinter import messagebox
 
 def connect_db():
     try:
-        conn = mysql.connector.connect(
+        conn = pymysql.connect(
             host="localhost",
-            user="root",
-            password="123456",
+            user="test",
+            password="666666",
             database="ecommerce_platform"
         )
         return conn
@@ -19,7 +19,7 @@ def get_all_products():
     conn = connect_db()
     if not conn:
         return []
-    cur = conn.cursor(dictionary=True)
+    cur = conn.cursor(pymysql.cursors.DictCursor)
     cur.execute("SELECT * FROM Product")
     res = cur.fetchall()
     cur.close()
@@ -30,7 +30,7 @@ def get_vendor_products(vid):
     conn = connect_db()
     if not conn:
         return []
-    cur = conn.cursor(dictionary=True)
+    cur = conn.cursor(pymysql.cursors.DictCursor)
     cur.execute("SELECT * FROM Product WHERE vendor_id=%s", (vid,))
     res = cur.fetchall()
     cur.close()
@@ -101,7 +101,7 @@ def login_customer(uid, pwd):
     conn = connect_db()
     if not conn:
         return None
-    cur = conn.cursor(dictionary=True)
+    cur = conn.cursor(pymysql.cursors.DictCursor)
     cur.execute("SELECT * FROM Customer WHERE customer_id=%s AND password=%s", (uid, pwd))
     res = cur.fetchone()
     cur.close()
@@ -112,7 +112,7 @@ def login_vendor(uid, pwd):
     conn = connect_db()
     if not conn:
         return None
-    cur = conn.cursor(dictionary=True)
+    cur = conn.cursor(pymysql.cursors.DictCursor)
     cur.execute("SELECT * FROM Vendor WHERE vendor_id=%s AND password=%s", (uid, pwd))
     res = cur.fetchone()
     cur.close()
@@ -124,7 +124,7 @@ def create_order(cid, cart):
     if not conn:
         messagebox.showerror("Checkout Error", "Database connection failed")
         return False
-    cur = conn.cursor(dictionary=True)
+    cur = conn.cursor(pymysql.cursors.DictCursor)
     try:
         if not cart:
             messagebox.showwarning("Warning", "Cart is empty")
@@ -169,7 +169,7 @@ def get_vendor_orders_detailed(vid):
     conn = connect_db()
     if not conn:
         return []
-    cur = conn.cursor(dictionary=True)
+    cur = conn.cursor(pymysql.cursors.DictCursor)
     try:
         cur.execute("""
             SELECT o.order_id, o.order_time, o.total_price, o.status, c.name AS customer_name
