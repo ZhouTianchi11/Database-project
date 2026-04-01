@@ -1,3 +1,4 @@
+<<<<<<< HEAD:pymysql.sql
 
 CREATE SCHEMA `ecommerce_platform` ;
 
@@ -61,34 +62,3 @@ insert into Vendor values ('xiaomi', 'xiaomi', '123456');
 insert into Vendor values ('huawei', 'huawei', '123456');
 
 
--- 1. Customer
--- customer_id：客户账号（登录用）
--- name：客户姓名
--- password：密码
-
--- 2. Vendor
--- vendor_id：商家账号（登录用）
--- name：商家名称
--- password：密码
-
--- 3. Product
--- product_id：商品 ID
--- vendor_id：所属商家
--- product_name：商品名
--- price：价格
--- stock：库存
--- tag1/tag2/tag3：标签
--- image_path：图片路径
-
--- 4. Orders
--- order_id：订单号
--- customer_id：下单客户
--- order_time：下单时间
--- total_price：订单总价
--- status：订单状态（pending）
-
--- 5. Order_Item
--- item_id：明细 ID
--- order_id：属于哪个订单
--- product_id：哪个商品
--- quantity：购买数量
