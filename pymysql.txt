@@ -46,6 +46,10 @@ CREATE TABLE Order_Item (
     FOREIGN KEY (product_id) REFERENCES Product(product_id)
 );
 
+insert testing id：
+INSERT INTO Customer（customer_id,name,password) VALUES('c001','Alice','123456');
+INSERT INTO Vendor(vendor_id,name,password) VALUES('v001','BestShop','123456');
+
 1. Customer
 customer_id：客户账号（登录用）
 name：客户姓名
