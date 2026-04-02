@@ -1,5 +1,4 @@
 # System of Customer and Admin
-
 <img width="650" height="590" alt="image" src="https://github.com/user-attachments/assets/5342a79b-3805-498a-aeae-d947b12d807d" />
 ## For the part of admin system:
 ### 1.Can achieve the function of the operation of vendor(add, delete)
