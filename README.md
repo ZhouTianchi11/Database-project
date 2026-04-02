@@ -11,10 +11,11 @@
 ### 2.Can handle the product to different vendor(add, update, delete)
 
 <img width="1747" height="1101" alt="image" src="https://github.com/user-attachments/assets/7eff2a8b-9397-41b9-8ba8-8f617d9cfd1b" />
+
 ### 3.Can browse user order information
 
-<img width="1750" height="1097" alt="image" src="https://github.com/user-attachments/assets/484102ed-2494-460d-a668-c73de3fc9b36" 
-  />
+<img width="1750" height="1097" alt="image" src="https://github.com/user-attachments/assets/484102ed-2494-460d-a668-c73de3fc9b36" />
+
 ## For the part of customer system:
 
 ### 1.Can seek the product by the name or tag and add the product to the cart
