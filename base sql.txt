@@ -1,0 +1,121 @@
+-- =============================================
+-- 1. 数据库创建与切换
+-- =============================================
+DROP DATABASE IF EXISTS ecommerce_platform;
+CREATE DATABASE ecommerce_platform CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE ecommerce_platform;
+
+-- =============================================
+-- 2. 基础表创建（按外键依赖顺序）
+-- =============================================
+
+-- 管理员表
+CREATE TABLE IF NOT EXISTS admin (
+    admin_id VARCHAR(50) PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    password VARCHAR(50) NOT NULL
+);
+
+-- 客户表
+CREATE TABLE IF NOT EXISTS Customer (
+    customer_id VARCHAR(50) PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    password VARCHAR(50) NOT NULL
+);
+
+-- 商户表
+CREATE TABLE IF NOT EXISTS Vendor (
+    vendor_id VARCHAR(50) PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    password VARCHAR(50) NOT NULL
+);
+
+-- 商品表（最终优化版，仅保留 tag 单字段）
+CREATE TABLE IF NOT EXISTS Product (
+    product_id INT AUTO_INCREMENT PRIMARY KEY,
+    vendor_id VARCHAR(50) NOT NULL,
+    product_name VARCHAR(100) NOT NULL,
+    price DECIMAL(10,2) NOT NULL,
+    stock INT NOT NULL,
+    tag VARCHAR(50),
+    image_path VARCHAR(255),
+    FOREIGN KEY (vendor_id) REFERENCES Vendor(vendor_id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- 购物车表
+CREATE TABLE IF NOT EXISTS cart_item (
+    cart_id INT AUTO_INCREMENT PRIMARY KEY,
+    customer_id VARCHAR(50) NOT NULL,
+    product_id INT NOT NULL,
+    quantity INT NOT NULL DEFAULT 1,
+    FOREIGN KEY (customer_id) REFERENCES Customer(customer_id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES Product(product_id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- 订单表（最终优化版，一次性建表，无需后续 ALTER）
+CREATE TABLE IF NOT EXISTS Orders (
+    order_id INT AUTO_INCREMENT PRIMARY KEY,
+    customer_id VARCHAR(50) NOT NULL,
+    total_price DECIMAL(10,2) NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'pending',
+    order_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (customer_id) REFERENCES Customer(customer_id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- 订单明细表
+CREATE TABLE IF NOT EXISTS Order_Item (
+    item_id INT AUTO_INCREMENT PRIMARY KEY,
+    order_id INT NOT NULL,
+    product_id INT NOT NULL,
+    quantity INT NOT NULL,
+    unit_price DECIMAL(10,2) NOT NULL,
+    FOREIGN KEY (order_id) REFERENCES Orders(order_id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES Product(product_id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- =============================================
+-- 3. 初始数据插入（测试账号）
+-- =============================================
+
+-- 客户测试数据
+INSERT INTO Customer (customer_id, name, password)
+VALUES 
+('zhan3', '张三', '123456'),
+('li4', '李四', '123456'),
+('wang5', '王五', '123456'),
+('zhao6', '赵六', '123456'),
+('sun7', '孙七', '123456'),
+('qian8', '钱八', '123456');
+
+-- 商户测试数据
+INSERT INTO Vendor (vendor_id, name, password)
+VALUES 
+('xiaomi', 'xiaomi', '123456'),
+('huawei', 'huawei', '123456');
+
+-- 管理员测试数据
+INSERT INTO admin (admin_id, name, password)
+VALUES ('admin', 'Super Admin', '123456');
+
+-- =============================================
+-- 4. 验证（可选，执行后可查看表结构）
+-- =============================================
+SHOW TABLES;
+DESC Product;
+DESC Orders;
+
+——————————————————————————————————————————————————————————————————————————————————
+表名	
+admin	        admin_id/name/password
+Customer	customer_id/name/password
+Vendor	        vendor_id/name/password
+Product	        product_id/vendor_id/product_name/price/stock/tag/image_path
+cart_item	cart_id/customer_id/product_id/quantity
+Orders	        order_id/customer_id/total_price/status/order_time
+Order_Item	item_id/order_id/product_id/quantity/unit_price
