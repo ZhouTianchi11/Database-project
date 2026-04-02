@@ -21,6 +21,8 @@
 ### 1.Can seek the product by the name or tag and add the product to the cart
 
 <img width="1375" height="931" alt="image" src="https://github.com/user-attachments/assets/fe81a2fb-2081-4d4e-a0d9-ece169360e85" />
+<img width="1372" height="932" alt="image" src="https://github.com/user-attachments/assets/7f565cc8-5b25-48b5-b57d-3fab739ab6a3" />
+
 
 ### 2.Can checkout their selection of the product
 
