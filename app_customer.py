@@ -82,7 +82,7 @@ def open_customer_dashboard():
     search_entry = ctk.CTkEntry(search_frame, width=350)
     search_entry.pack(side="left", padx=10)
 
-    product_list = Listbox(win, font=("Arial", 20), height=18)
+    product_list = Listbox(win, font=("Arial", 18), height=18)
     product_list.pack(fill="both", expand=True, padx=20, pady=10)
 
     def load_all_products(key=""):
@@ -312,12 +312,12 @@ def open_my_orders():
     ctk.CTkButton(top_frame, text="Back", command=back).pack(side="left", padx=5)
     ctk.CTkLabel(top_frame, text="My Order History", font=("Arial", 16, "bold")).pack(side="left", padx=20)
 
-    left_frame = ctk.CTkFrame(win, width=350)
+    left_frame = ctk.CTkFrame(win, width=450)
     left_frame.pack(side="left", fill="y", padx=(20, 10), pady=10)
     left_frame.pack_propagate(False)
     
     ctk.CTkLabel(left_frame, text="Orders", font=("Arial", 14, "bold")).pack(pady=5)
-    order_list = Listbox(left_frame, font=("Arial", 20), height=25)
+    order_list = Listbox(left_frame, font=("Arial", 18), height=25)
     order_list.pack(fill="both", expand=True, padx=10, pady=10)
 
     right_frame = ctk.CTkFrame(win)
@@ -332,8 +332,10 @@ def open_my_orders():
     
     ctk.CTkLabel(items_frame, text="Items in Selected Order:", font=("Arial", 12, "bold")).pack(anchor="w", padx=5, pady=2)
     
-    item_list = Listbox(items_frame, font=("Consolas", 20), height=12)
+    item_list = Listbox(items_frame, font=("Consolas", 18), height=12, selectmode="single")
     item_list.pack(fill="both", expand=True, padx=5, pady=5)
+    
+    item_list.bind("<<ListboxSelect>>", lambda e: None)
     
     action_frame = ctk.CTkFrame(right_frame)
     action_frame.pack(fill="x", padx=10, pady=10)
@@ -354,47 +356,43 @@ def open_my_orders():
 
     def load_order_details_and_items(evt=None):
         nonlocal current_selected_oid
+        
+        # Only process if there's actually a selection
         sel = order_list.curselection()
-        if not sel:
-            item_list.delete(0, END)
-            btn_remove_item.configure(state="disabled")
-            btn_cancel_order.configure(state="disabled")
-            return
-            
-        txt = order_list.get(sel[0])
-        if not txt.startswith("Order:"):
-            return
-        
-        oid = txt.split("Order:")[1].split("|")[0].strip()
-        current_selected_oid = oid
-        
-        item_list.delete(0, END)
-        
-        result = database.get_order_items_for_customer(oid, current_cid)
-        if not result:
-            item_list.insert(END, "No items found or unauthorized.")
-            btn_remove_item.configure(state="disabled")
-            btn_cancel_order.configure(state="disabled")
-            return
-            
-        items, status = result
-        
-        if not items:
-            item_list.insert(END, "Order is empty.")
-            btn_remove_item.configure(state="disabled")
-            btn_cancel_order.configure(state="disabled")
-            return
+        if sel:
+            txt = order_list.get(sel[0])
+            if txt.startswith("Order:"):
+                oid = txt.split("Order:")[1].split("|")[0].strip()
+                current_selected_oid = oid
+                
+                item_list.delete(0, END)
+                
+                result = database.get_order_items_for_customer(oid, current_cid)
+                if not result:
+                    item_list.insert(END, "No items found or unauthorized.")
+                    btn_remove_item.configure(state="disabled")
+                    btn_cancel_order.configure(state="disabled")
+                    return
+                    
+                items, status = result
+                
+                if not items:
+                    item_list.insert(END, "Order is empty.")
+                    btn_remove_item.configure(state="disabled")
+                    btn_cancel_order.configure(state="disabled")
+                    return
 
-        for item in items:
-            item_list.insert(END, f"PID:{item[5]} | {item[1]} | Qty:{item[2]} | ${item[3]:.2f} | Sub:${item[4]:.2f}")
-            
-        if status == 'pending':
-            btn_remove_item.configure(state="normal")
-            btn_cancel_order.configure(state="normal")
-        else:
-            btn_remove_item.configure(state="disabled")
-            btn_cancel_order.configure(state="disabled")
-            item_list.insert(END, f"\n(Status: {status} - No modifications allowed)")
+                for item in items:
+                    item_list.insert(END, f"PID:{item[5]} | {item[1]} | Qty:{item[2]} | ${item[3]:.2f} | Sub:${item[4]:.2f}")
+                
+
+                if status == 'pending':
+                    btn_remove_item.configure(state="normal")
+                    btn_cancel_order.configure(state="normal")
+                else:
+                    btn_remove_item.configure(state="disabled")
+                    btn_cancel_order.configure(state="disabled")
+                    item_list.insert(END, f"\n(Status: {status} - No modifications allowed)")
 
     def remove_selected_item():
         nonlocal current_selected_oid
@@ -415,8 +413,44 @@ def open_my_orders():
         if messagebox.askyesno("Confirm", "Remove this item from the order? Stock will be restored."):
             if database.remove_order_item(current_selected_oid, pid, current_cid):
                 messagebox.showinfo("Success", "Item removed")
-                load_user_orders()
-                load_order_details_and_items()
+                
+                # Check if order is now empty by getting updated items
+                result = database.get_order_items_for_customer(current_selected_oid, current_cid)
+                if result:
+                    items, status = result
+                    if not items or len(items) == 0:
+                        # Order is empty, auto-cancel it
+                        if database.cancel_order(current_selected_oid):
+                            messagebox.showinfo("Info", "Order was empty and has been automatically cancelled")
+                            load_user_orders()
+                            item_list.delete(0, END)
+                            btn_remove_item.configure(state="disabled")
+                            btn_cancel_order.configure(state="disabled")
+                            current_selected_oid = None
+                            order_list.selection_clear(0, END)
+                        else:
+                            messagebox.showerror("Error", "Failed to auto-cancel empty order")
+                            # Still refresh to show empty state
+                            load_user_orders()
+                            load_order_details_and_items()
+                    else:
+                        # Order still has items, just refresh
+                        load_user_orders()
+                        
+                        # Reselect the same order to maintain context
+                        for i in range(order_list.size()):
+                            order_text = order_list.get(i)
+                            if order_text.startswith(f"Order:{current_selected_oid}"):
+                                order_list.selection_clear(0, END)
+                                order_list.selection_set(i)
+                                order_list.activate(i)
+                                break
+                        
+                        load_order_details_and_items()
+                else:
+                    # Could not get order items, refresh as fallback
+                    load_user_orders()
+                    load_order_details_and_items()
             else:
                 messagebox.showerror("Error", "Failed to remove item")
 
