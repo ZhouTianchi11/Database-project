@@ -78,7 +78,7 @@ CREATE TABLE transactions (
     customer_id VARCHAR(50) NOT NULL,
     amount DECIMAL(10,2) NOT NULL,
     transaction_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    status VARCHAR(20) DEFAULT 'completed'
+    status VARCHAR(20) DEFAULT 'completed',
     FOREIGN KEY (order_id) REFERENCES orders(order_id),
     FOREIGN KEY (vendor_id) REFERENCES vendor(vendor_id),
     FOREIGN KEY (customer_id) REFERENCES customer(customer_id)
