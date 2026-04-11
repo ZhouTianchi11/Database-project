@@ -2,7 +2,7 @@ import customtkinter as ctk
 from tkinter import messagebox
 import app_admin
 import app_customer
-# Removed import app_vendor
+
 
 def open_login_window():
     win = ctk.CTk()
