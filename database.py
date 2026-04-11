@@ -2,8 +2,6 @@ import pymysql
 from pymysql import Error
 from tkinter import messagebox
 
-
-
 def connect_db():
     try:
         conn = pymysql.connect(
@@ -566,15 +564,16 @@ def get_order_items_for_customer(oid, cid):
         cur.close()
         conn.close()
 
+
 def remove_order_item(oid, pid, cid):
-    """Remove a specific item from an order and restore stock. Only if pending."""
+    """Remove a specific item from an order, restore stock, and update transaction for partial/full refund."""
     conn = connect_db()
     if not conn:
         return False
     cur = conn.cursor()
     try:
-
-        cur.execute("SELECT customer_id, status FROM orders WHERE order_id=%s", (oid,))
+        # Verify order ownership and status
+        cur.execute("SELECT customer_id, status FROM orders WHERE order_id = %s", (oid,))
         order_info = cur.fetchone()
         if not order_info or order_info[0] != cid:
             messagebox.showerror("Error", "Unauthorized access")
@@ -583,29 +582,61 @@ def remove_order_item(oid, pid, cid):
             messagebox.showwarning("Warning", "Only pending orders can be modified")
             return False
 
-
-        cur.execute("SELECT quantity FROM order_item WHERE order_id=%s AND product_id=%s", (oid, pid))
+        # Get item quantity and vendor info
+        cur.execute("""
+            SELECT oi.quantity, p.vendor_id
+            FROM order_item oi
+            JOIN product p ON oi.product_id = p.product_id
+            WHERE oi.order_id = %s AND oi.product_id = %s
+        """, (oid, pid))
         item_res = cur.fetchone()
         if not item_res:
             return False
-        
-        qty = item_res[0]
+        qty, vid = item_res
 
-        cur.execute("UPDATE product SET stock = stock + %s WHERE product_id=%s", (qty, pid))
-        cur.execute("DELETE FROM order_item WHERE order_id=%s AND product_id=%s", (oid, pid))
-        
-        cur.execute("SELECT SUM(quantity * unit_price) FROM order_item WHERE order_id=%s", (oid,))
-        new_total_res = cur.fetchone()
-        new_total = new_total_res[0] if new_total_res[0] is not None else 0.0
-        
-        cur.execute("UPDATE orders SET total_price=%s WHERE order_id=%s", (new_total, oid))
+        # Restore product stock
+        cur.execute("UPDATE product SET stock = stock + %s WHERE product_id = %s", (qty, pid))
 
-        if new_total == 0:
-             cur.execute("DELETE FROM transactions WHERE order_id=%s", (oid,))
-             cur.execute("DELETE FROM orders WHERE order_id=%s", (oid,))
+        # Remove the order item
+        cur.execute("DELETE FROM order_item WHERE order_id = %s AND product_id = %s", (oid, pid))
+
+        # Recalculate total order price
+        cur.execute("SELECT COALESCE(SUM(quantity * unit_price), 0) FROM order_item WHERE order_id = %s", (oid,))
+        new_order_total = cur.fetchone()[0]
+        cur.execute("UPDATE orders SET total_price = %s WHERE order_id = %s", (new_order_total, oid))
+
+        # Calculate new vendor amount
+        cur.execute("""
+            SELECT COALESCE(SUM(oi.quantity * oi.unit_price), 0)
+            FROM order_item oi
+            JOIN product p ON oi.product_id = p.product_id
+            WHERE oi.order_id = %s AND p.vendor_id = %s
+        """, (oid, vid))
+        new_vendor_amount = cur.fetchone()[0]
+
+        # Update transaction based on remaining items from vendor
+        if new_vendor_amount == 0:
+            # Full refund: no items left from this vendor
+            cur.execute("""
+                UPDATE transactions 
+                SET status = 'refund', amount = 0 
+                WHERE order_id = %s AND vendor_id = %s
+            """, (oid, vid))
+        else:
+            # Partial refund: update amount, keep status as 'completed'
+            cur.execute("""
+                UPDATE transactions 
+                SET amount = %s 
+                WHERE order_id = %s AND vendor_id = %s
+            """, (new_vendor_amount, oid, vid))
+
+        # If entire order is empty, delete it (transactions already handled above)
+        if new_order_total == 0:
+            cur.execute("DELETE FROM orders WHERE order_id = %s", (oid,))
 
         conn.commit()
         return True
+
     except Exception as e:
         print(f"Remove Order Item Error: {str(e)}")
         conn.rollback()
