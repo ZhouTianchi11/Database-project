@@ -89,8 +89,7 @@ CREATE TABLE transactions (
 
 -- 1. Admins
 INSERT INTO admin (admin_id, name, password) VALUES 
-('admin', 'Super Admin', '123456'),
-('manager', 'Store Manager', '123456');
+('admin', 'Super Admin', '123456');
 
 -- 2. Vendors
 INSERT INTO vendor (vendor_id, name, rating, location) VALUES 
