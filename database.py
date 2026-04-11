@@ -3,24 +3,6 @@ from pymysql import Error
 from tkinter import messagebox
 
 
-"""
-Database Interface Module for E-Commerce Platform
-
-This module provides a comprehensive set of functions to interact with the MySQL database 
-for an e-commerce application. It handles authentication, vendor management, product 
-operations, shopping cart functionality, order processing, transaction records, and 
-customer profile management.
-
-Key Features:
-- Secure database connection using PyMySQL
-- User authentication (customer & admin)
-- CRUD operations for vendors and products
-- Cart management with stock validation
-- Order creation, modification, and cancellation
-- Transaction tracking per vendor
-- Profile management for customers
-
-"""
 
 def connect_db():
     try:
