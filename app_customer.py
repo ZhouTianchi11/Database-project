@@ -476,3 +476,4 @@ def open_my_orders():
     
     load_user_orders()
     win.mainloop()
+    
