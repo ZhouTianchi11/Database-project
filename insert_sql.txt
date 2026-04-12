@@ -36,7 +36,8 @@ CREATE TABLE product (
     tag2 VARCHAR(50),
     tag3 VARCHAR(50),
     image_path VARCHAR(255),
-    FOREIGN KEY (vendor_id) REFERENCES vendor(vendor_id) ON DELETE CASCADE
+    FOREIGN KEY (vendor_id) REFERENCES vendor(vendor_id) ON DELETE RESTRICT,
+    CONSTRAINT check_price_non_negative CHECK (price >= 0)
 );
 
 -- Cart Item Table
@@ -45,8 +46,8 @@ CREATE TABLE cart_item (
     customer_id VARCHAR(50) NOT NULL,
     product_id INT NOT NULL,
     quantity INT NOT NULL DEFAULT 1,
-    FOREIGN KEY (customer_id) REFERENCES customer(customer_id) ON DELETE CASCADE,
-    FOREIGN KEY (product_id) REFERENCES product(product_id) ON DELETE CASCADE
+    FOREIGN KEY (customer_id) REFERENCES customer(customer_id) ON DELETE RESTRICT,
+    FOREIGN KEY (product_id) REFERENCES product(product_id) ON DELETE RESTRICT
 );
 
 -- Orders Table
@@ -56,7 +57,8 @@ CREATE TABLE orders (
     order_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     total_price DECIMAL(10,2) NOT NULL,
     status VARCHAR(20) DEFAULT 'pending', -- pending, shipped, completed
-    FOREIGN KEY (customer_id) REFERENCES customer(customer_id)
+    FOREIGN KEY (customer_id) REFERENCES customer(customer_id) ON DELETE RESTRICT,
+    CONSTRAINT check_total_price_non_negative CHECK (total_price >= 0)
 );
 
 -- Order Item Table
@@ -66,12 +68,13 @@ CREATE TABLE order_item (
     product_id INT NOT NULL,
     quantity INT NOT NULL,
     unit_price DECIMAL(10,2) NOT NULL,
-    FOREIGN KEY (order_id) REFERENCES orders(order_id) ON DELETE CASCADE,
-    FOREIGN KEY (product_id) REFERENCES product(product_id)
+    FOREIGN KEY (order_id) REFERENCES orders(order_id) ON DELETE RESTRICT,
+    FOREIGN KEY (product_id) REFERENCES product(product_id) ON DELETE RESTRICT,
+    CONSTRAINT check_unit_price_non_negative CHECK (unit_price >= 0)
 );
 
--- Transactions Table
-CREATE TABLE transactions (
+--Order_Transaction Table
+CREATE TABLE order_transaction (
     transaction_id INT AUTO_INCREMENT PRIMARY KEY,
     order_id INT NOT NULL,
     vendor_id VARCHAR(50) NOT NULL,
@@ -81,7 +84,8 @@ CREATE TABLE transactions (
     status VARCHAR(20) DEFAULT 'completed',
     FOREIGN KEY (order_id) REFERENCES orders(order_id),
     FOREIGN KEY (vendor_id) REFERENCES vendor(vendor_id),
-    FOREIGN KEY (customer_id) REFERENCES customer(customer_id)
+    FOREIGN KEY (customer_id) REFERENCES customer(customer_id),
+    CONSTRAINT check_amount_non_negative CHECK (amount >= 0)
 );
 
 
@@ -178,19 +182,19 @@ INSERT INTO order_item (order_id, product_id, quantity, unit_price) VALUES
 (1003, 16, 1, 1299.00), -- Air Max 270 (Nike)
 (1003, 17, 1, 199.00);  -- Dri-FIT T-Shirt (Nike)
 
--- 6. Sample Transactions
+-- 6. Sample Order_Transaction
 -- Transaction for Order 1001: Payment to Xiaomi
-INSERT INTO transactions (order_id, vendor_id, customer_id, amount, status, transaction_date) VALUES 
+INSERT INTO order_transaction (order_id, vendor_id, customer_id, amount, status, transaction_date) VALUES 
 (1001, 'xiaomi', 'zhan3', 299.00, 'completed', '2023-10-01 10:00:00');
 
 -- Transaction for Order 1001: Payment to Book World
-INSERT INTO transactions (order_id, vendor_id, customer_id, amount, status, transaction_date) VALUES 
+INSERT INTO order_transaction (order_id, vendor_id, customer_id, amount, status, transaction_date) VALUES 
 (1001, 'book_world', 'zhan3', 89.00, 'completed', '2023-10-01 10:00:00');
 
 -- Transaction for Order 1002: Payment to Apple Auth
-INSERT INTO transactions (order_id, vendor_id, customer_id, amount, status, transaction_date) VALUES 
+INSERT INTO order_transaction (order_id, vendor_id, customer_id, amount, status, transaction_date) VALUES 
 (1002, 'apple_auth', 'li4', 8999.00, 'completed', '2023-10-05 14:30:00');
 
 -- Transaction for Order 1003: Payment to Nike (Total for both items)
-INSERT INTO transactions (order_id, vendor_id, customer_id, amount, status, transaction_date) VALUES 
+INSERT INTO order_transaction (order_id, vendor_id, customer_id, amount, status, transaction_date) VALUES 
 (1003, 'nike_store', 'wang5', 1498.00, 'completed', '2023-10-20 09:15:00');
