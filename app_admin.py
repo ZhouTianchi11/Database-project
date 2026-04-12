@@ -35,7 +35,15 @@ def open_admin_login_and_dashboard():
 def open_admin_dashboard():
     win = ctk.CTk()
     win.title("Admin Dashboard")
-    win.geometry("1200x800") 
+    win.geometry("1300x900") 
+    def on_closing():
+        for after_id in win.tk.call("after", "info", win._w):
+            win.after_cancel(after_id)
+        win.destroy()
+        import main
+        main.open_login_window()
+
+    win.protocol("WM_DELETE_WINDOW", on_closing) 
 
     top_bar = ctk.CTkFrame(win, height=60)
     top_bar.pack(fill="x", padx=15, pady=10)
@@ -66,7 +74,6 @@ def open_admin_dashboard():
     # -------------------- Order Management --------------------
     setup_order_management(tab_orders)
 
-    win.protocol("WM_DELETE_WINDOW", lambda: (win.destroy(), open_admin_login_and_dashboard()))
     win.mainloop()
 
 def setup_vendor_management(tab):
@@ -333,67 +340,104 @@ def setup_product_management(tab):
 
 def setup_order_management(tab):
     """Setup the Order Management Tab for Admins"""
+    # ====================== 1. Top: Refresh Button ======================
+    top_btn_frame = ctk.CTkFrame(tab)
+    top_btn_frame.pack(fill="x", padx=15, pady=5)
     
-    # Left side: Order List
-    left_frame = ctk.CTkFrame(tab, width=500)
-    left_frame.pack(side="left", fill="y", padx=(15, 7.5), pady=15)
-    left_frame.pack_propagate(False)
+    refresh_all_btn = ctk.CTkButton(
+        top_btn_frame, text="Refresh All Orders", 
+        command=lambda: (load_pending_orders(), load_shipped_orders(), load_completed_orders())
+    )
+    refresh_all_btn.pack(side="left", padx=10)
+
+    # ====================== 2. Middle: 3 Order Lists ======================
+    list_frame = ctk.CTkFrame(tab)
+    list_frame.pack(fill="both", expand=True, padx=15, pady=5)
     
-    ctk.CTkLabel(left_frame, text="All Orders", font=("Arial", 16, "bold")).pack(pady=10)
-    
-    order_list = Listbox(left_frame, font=("Arial", 18), height=20)
-    order_list.pack(fill="both", expand=True, padx=10, pady=10)
-    
-    # Right side: Order Details
-    right_frame = ctk.CTkFrame(tab)
-    right_frame.pack(side="right", fill="both", expand=True, padx=(7.5, 15), pady=15)
-    
-    ctk.CTkLabel(right_frame, text="Order Details & Items", font=("Arial", 16, "bold")).pack(pady=10)
-    
-    detail_text = Text(right_frame, font=("Consolas", 11), wrap="word")
+    # Pending Orders List
+    pending_frame = ctk.CTkFrame(list_frame)
+    pending_frame.pack(side="left", fill="both", expand=True, padx=5, pady=5)
+    ctk.CTkLabel(pending_frame, text="Pending Orders", font=("Arial", 14, "bold")).pack(pady=5)
+    pending_list = Listbox(pending_frame, font=("Arial", 10), height=15)
+    pending_list.pack(fill="both", expand=True, padx=10, pady=5)
+
+    # Shipped Orders List
+    shipped_frame = ctk.CTkFrame(list_frame)
+    shipped_frame.pack(side="left", fill="both", expand=True, padx=5, pady=5)
+    ctk.CTkLabel(shipped_frame, text="Shipped Orders", font=("Arial", 14, "bold")).pack(pady=5)
+    shipped_list = Listbox(shipped_frame, font=("Arial", 10), height=15)
+    shipped_list.pack(fill="both", expand=True, padx=10, pady=5)
+
+    # Completed Orders List
+    completed_frame = ctk.CTkFrame(list_frame)
+    completed_frame.pack(side="left", fill="both", expand=True, padx=5, pady=5)
+    ctk.CTkLabel(completed_frame, text="Completed Orders", font=("Arial", 14, "bold")).pack(pady=5)
+    completed_list = Listbox(completed_frame, font=("Arial", 10), height=15)
+    completed_list.pack(fill="both", expand=True, padx=10, pady=5)
+
+    # ====================== 3. Bottom: Order Details ======================
+    detail_frame = ctk.CTkFrame(tab)
+    detail_frame.pack(fill="both", expand=True, padx=15, pady=10)
+
+    ctk.CTkLabel(detail_frame, text="Order Details & Items", font=("Arial", 16, "bold")).pack(pady=10)
+    detail_text = Text(detail_frame, font=("Consolas", 11), wrap="word")
     detail_text.pack(fill="both", expand=True, padx=10, pady=10)
-    
-    # Add status control buttons
-    status_frame = ctk.CTkFrame(right_frame)
+
+    status_frame = ctk.CTkFrame(detail_frame)
     status_frame.pack(fill="x", padx=10, pady=5)
-    
+
+    # ====================== 4. Define Shared Variables FIRST ======================
     current_selected_oid = None
     current_status = None
-    
-    def load_all_orders():
-        order_list.delete(0, END)
-        orders = database.get_all_orders()
+
+    # ====================== 5. Define Load Functions ======================
+    def load_pending_orders():
+        pending_list.delete(0, END)
+        orders = database.get_orders_by_status("pending")
         for o in orders:
-            order_list.insert(END, f"ID:{o[0]} | Customer:{o[1]} | Total:${o[2]:.2f} | Status:{o[3]}")
-            
-    def show_order_details(evt=None):
+            pending_list.insert(END, f"ID:{o[0]} | Customer:{o[1]} | Total:${o[2]:.2f} | Status:{o[3]}")
+
+    def load_shipped_orders():
+        shipped_list.delete(0, END)
+        orders = database.get_orders_by_status("shipped")
+        for o in orders:
+            shipped_list.insert(END, f"ID:{o[0]} | Customer:{o[1]} | Total:${o[2]:.2f} | Status:{o[3]}")
+
+    def load_completed_orders():
+        completed_list.delete(0, END)
+        orders = database.get_orders_by_status("completed")
+        for o in orders:
+            completed_list.insert(END, f"ID:{o[0]} | Customer:{o[1]} | Total:${o[2]:.2f} | Status:{o[3]}")
+
+    # ====================== 6. Define Order Select Handler ======================
+    def on_order_select(event):
         nonlocal current_selected_oid, current_status
-        sel = order_list.curselection()
+        widget = event.widget
+        sel = widget.curselection()
+        
         if not sel:
             detail_text.delete(1.0, END)
-            # Disable buttons when no selection
             shipped_btn.configure(state="disabled")
             completed_btn.configure(state="disabled")
             return
-        
-        txt = order_list.get(sel[0])
+
+        txt = widget.get(sel[0])
         oid = txt.split("ID:")[1].split(" |")[0]
         current_selected_oid = oid
         current_status = txt.split("Status:")[1].strip()
-        
+
         detail_text.delete(1.0, END)
-        
         items = database.get_order_full_details(oid)
         if not items:
             detail_text.insert(END, "No items found for this order.")
             shipped_btn.configure(state="disabled")
             completed_btn.configure(state="disabled")
             return
-            
+
         detail_text.insert(END, f"--- Order ID: {oid} ---\n\n")
         detail_text.insert(END, f"{'Product Name':<25} {'Qty':<6} {'Unit Price':<12} {'Subtotal':<12} {'Vendor ID':<10}\n")
         detail_text.insert(END, "-" * 70 + "\n")
-        
+
         total_items = 0.0
         for item in items:
             pname = str(item[0])
@@ -403,74 +447,74 @@ def setup_order_management(tab):
             vid = str(item[4])
             detail_text.insert(END, f"{pname:<25} {qty:<6} ${price:<11.2f} ${sub:<11.2f} {vid:<10}\n")
             total_items += sub
-            
+
         detail_text.insert(END, "-" * 70 + "\n")
         detail_text.insert(END, f"Total Order Amount: ${total_items:.2f}\n\n")
 
-        transactions = database.get_transactions_by_order(oid)
-        if transactions:
+        order_transaction = database.get_order_transaction_by_order(oid)
+        if order_transaction:
             detail_text.insert(END, "--- Payment Transactions ---\n")
             detail_text.insert(END, f"{'Vendor':<25} {'Amount':<12} {'Date':<20} {'Status':<10}\n")
             detail_text.insert(END, "-" * 70 + "\n")
-            for t in transactions:
+            for t in order_transaction:
                 v_name = str(t[1])
                 amount = float(t[2])
                 date = str(t[3])
                 status = str(t[4])
                 detail_text.insert(END, f"{v_name:<25} ${amount:<11.2f} {date:<20} {status:<10}\n")
-        
-        # Enable appropriate buttons based on status
+
         if current_status == 'pending':
             shipped_btn.configure(state="normal")
             completed_btn.configure(state="disabled")
         elif current_status == 'shipped':
             shipped_btn.configure(state="disabled")
             completed_btn.configure(state="normal")
-        else:  # completed
+        else:
             shipped_btn.configure(state="disabled")
             completed_btn.configure(state="disabled")
-    
+
+    # ====================== 7. Define Status Update Functions BEFORE Buttons ======================
     def mark_as_shipped():
         if current_selected_oid and messagebox.askyesno("Confirm", "Mark this order as shipped?"):
             if database.update_order_status(current_selected_oid, 'shipped'):
                 messagebox.showinfo("Success", "Order marked as shipped")
-                load_all_orders()
-                # Re-select the same order
-                for i in range(order_list.size()):
-                    if order_list.get(i).startswith(f"ID:{current_selected_oid}"):
-                        order_list.selection_set(i)
-                        show_order_details()
-                        break
+                load_pending_orders()
+                load_shipped_orders()
+                load_completed_orders()
+                detail_text.delete(1.0, END)
             else:
                 messagebox.showerror("Error", "Failed to update status")
-    
+
     def mark_as_completed():
         if current_selected_oid and messagebox.askyesno("Confirm", "Mark this order as completed?"):
             if database.update_order_status(current_selected_oid, 'completed'):
                 messagebox.showinfo("Success", "Order marked as completed")
-                load_all_orders()
-                # Re-select the same order
-                for i in range(order_list.size()):
-                    if order_list.get(i).startswith(f"ID:{current_selected_oid}"):
-                        order_list.selection_set(i)
-                        show_order_details()
-                        break
+                load_pending_orders()
+                load_shipped_orders()
+                load_completed_orders()
+                detail_text.delete(1.0, END)
             else:
                 messagebox.showerror("Error", "Failed to update status")
-    
-    # Add the two status buttons
-    shipped_btn = ctk.CTkButton(status_frame, text="Mark as Shipped", 
-                               command=mark_as_shipped, state="disabled", width=120)
+
+    # ====================== 8. Create Buttons (AFTER functions are defined) ======================
+    shipped_btn = ctk.CTkButton(
+        status_frame, text="Mark as Shipped", 
+        command=mark_as_shipped, state="disabled", width=120, fg_color="#f39c12"
+    )
     shipped_btn.pack(side="left", padx=5)
-    
-    completed_btn = ctk.CTkButton(status_frame, text="Mark as Completed", 
-                                 command=mark_as_completed, state="disabled", width=130)
+
+    completed_btn = ctk.CTkButton(
+        status_frame, text="Mark as Completed", 
+        command=mark_as_completed, state="disabled", width=130, fg_color="#27ae60"
+    )
     completed_btn.pack(side="left", padx=5)
-    
-    # Keep existing refresh button
-    btn_frame = ctk.CTkFrame(left_frame)
-    btn_frame.pack(fill="x", padx=10, pady=10)
-    ctk.CTkButton(btn_frame, text="Refresh Orders", command=load_all_orders).pack(fill="x")
-    
-    order_list.bind("<<ListboxSelect>>", show_order_details)
-    load_all_orders()
+
+    # ====================== 9. Bind Events ======================
+    pending_list.bind("<<ListboxSelect>>", on_order_select)
+    shipped_list.bind("<<ListboxSelect>>", on_order_select)
+    completed_list.bind("<<ListboxSelect>>", on_order_select)
+
+    # ====================== 10. Initial Load ======================
+    load_pending_orders()
+    load_shipped_orders()
+    load_completed_orders()
