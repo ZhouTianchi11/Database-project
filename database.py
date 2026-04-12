@@ -330,7 +330,7 @@ def remove_cart_item(cart_id):
         cur.close()
         conn.close()
 
-# -------------------- Orders & Transactions --------------------
+# -------------------- Orders & order_transaction --------------------
 
 def update_order_status(order_id, new_status):
     conn = None
@@ -405,10 +405,10 @@ def create_order_from_cart(cid):
             # Update Stock ('Product' -> 'product')
             cur.execute("UPDATE product SET stock = stock - %s WHERE product_id = %s", (qty, pid))
 
-        # 4. Create Transaction Records for each Vendor involved ('Transactions' -> 'transactions')
+        # 4. Create Transaction Records for each Vendor involved ('Transaction' -> 'transactions')
         for vid, amount in vendor_amounts.items():
             cur.execute("""
-                INSERT INTO transactions (order_id, vendor_id, customer_id, amount, status)
+                INSERT INTO order_transaction (order_id, vendor_id, customer_id, amount, status)
                 VALUES (%s, %s, %s, %s, 'completed')
             """, (order_id, vid, cid, amount))
 
@@ -478,8 +478,23 @@ def get_order_full_details(order_id):
     conn.close()
     return details
 
-def get_transactions_by_order(order_id):
-    """Get all transactions associated with a specific order"""
+def get_orders_by_status(status):
+    """Get orders by status (pending/shipped/completed)"""
+    conn = connect_db()
+    cursor = conn.cursor()
+    sql = """
+    SELECT order_id, customer_id, total_price, status
+    FROM orders
+    WHERE status = %s
+    ORDER BY order_time DESC
+    """
+    cursor.execute(sql, (status,))
+    result = cursor.fetchall()
+    conn.close()
+    return result
+
+def get_order_transaction_by_order(order_id):
+    """Get all order_transaction associated with a specific order"""
     conn = connect_db()
     if not conn:
         return []
@@ -488,14 +503,14 @@ def get_transactions_by_order(order_id):
 
         cur.execute("""
             SELECT t.transaction_id, v.name AS vendor_name, t.amount, t.transaction_date, t.status
-            FROM transactions t
+            FROM order_transaction t
             JOIN vendor v ON t.vendor_id = v.vendor_id
             WHERE t.order_id = %s
         """, (order_id,))
         res = cur.fetchall()
         return res
     except Exception as e:
-        print(f"Get Transactions Error: {str(e)}")
+        print(f"Get order_transaction Error: {str(e)}")
         return []
     finally:
         cur.close()
@@ -520,7 +535,7 @@ def cancel_order(oid):
             cur.execute("UPDATE product SET stock = stock + %s WHERE product_id=%s", (qty, pid))
 
 
-        cur.execute("DELETE FROM transactions WHERE order_id=%s", (oid,))
+        cur.execute("DELETE FROM order_transaction WHERE order_id=%s", (oid,))
         
         cur.execute("DELETE FROM order_item WHERE order_id=%s", (oid,))
         cur.execute("DELETE FROM orders WHERE order_id=%s", (oid,))
@@ -607,7 +622,7 @@ def remove_order_item(oid, pid, cid):
 
         # Add refund transaction
         cur.execute("""
-            INSERT INTO transactions 
+            INSERT INTO order_transaction 
             (order_id, vendor_id, customer_id, amount, status)
             VALUES (%s, %s, %s, %s, 'refund')
         """, (oid, vid, cid, refund_amount))
@@ -666,3 +681,49 @@ def update_customer_profile(cid, name, contact, address):
     finally:
         cur.close()
         conn.close()
+
+def get_vendor_shipped_orders(vendor_id):
+    """Get shipped orders for a specific vendor"""
+    conn = connect_db()
+    cursor = conn.cursor()
+    sql = """
+    SELECT DISTINCT
+        o.order_id,
+        o.customer_id,
+        o.order_time,
+        o.total_price,
+        o.status
+    FROM orders o
+    JOIN order_item oi ON o.order_id = oi.order_id
+    JOIN product p ON oi.product_id = p.product_id
+    WHERE p.vendor_id = %s
+      AND o.status = 'shipped'
+    ORDER BY o.order_time DESC
+    """
+    cursor.execute(sql, (vendor_id,))
+    result = cursor.fetchall()
+    conn.close()
+    return result
+
+def get_vendor_completed_orders(vendor_id):
+    """Get completed orders for a specific vendor"""
+    conn = connect_db()
+    cursor = conn.cursor()
+    sql = """
+    SELECT DISTINCT
+        o.order_id,
+        o.customer_id,
+        o.order_time,
+        o.total_price,
+        o.status
+    FROM orders o
+    JOIN order_item oi ON o.order_id = oi.order_id
+    JOIN product p ON oi.product_id = p.product_id
+    WHERE p.vendor_id = %s
+      AND o.status = 'completed'
+    ORDER BY o.order_time DESC
+    """
+    cursor.execute(sql, (vendor_id,))
+    result = cursor.fetchall()
+    conn.close()
+    return result
