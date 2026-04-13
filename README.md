@@ -38,5 +38,4 @@ This is a full-stack e-commerce management system supporting two roles: User and
 ### 2. Create Database
 Open MySQL client and run:
 insert_sql.txt
-CREATE DATABASE e_character;
 
