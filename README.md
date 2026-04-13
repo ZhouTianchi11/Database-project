@@ -8,72 +8,77 @@ Unified login for User and Super Admin
 Auto redirect to corresponding dashboard based on role
 🔑 Super Admin
 Merchant Management
-Merchant list on the left
+Merchant list displayed on the left
 Add / delete merchants on the right
 Product Catalog
-Switch merchants via dropdown
-View products under each merchant
-Add products: name, price, stock, 3 tags
-Delete products
+Switch merchants via dropdown menu
+View all products under the selected merchant
+Add products with name, price, stock, and 3 tags
+Delete existing products
 Order Management
 View all orders placed by users
 🧑‍💻 User Side
 Product Browse & Search
-Display all products
-Search by product name or tag
-Add to cart
+Display all product information
+Search products by name or tag
+Add products to shopping cart
 Shopping Cart
-Update quantity
-Remove items
-Checkout to place order
+Update product quantity
+Remove items from cart
+Checkout to place orders
 My Orders
-View all personal orders
-Remove single item from order
-Delete entire order
+View all personal order records
+Remove single items from an order
+Delete entire order records
 Account Info
-View personal account details
+View and manage personal account details
 🛠️ Tech Stack
 Frontend: Vue3, HTML, CSS, JavaScript
-Backend: Node.js / Java / Python (fill in yours)
+Backend: Node.js / Java / Python (fill in your actual tech)
 Database: MySQL
 Tools: Git, IDE, Node.js
 🚀 Quick Start
 bash
 运行
-# Clone the project
-git clone https://github.com/your-username/your-repo.git
+# 1. Clone the project
+git clone https://github.com/your-username/your-repo-name.git
 
-# Enter directory
+# 2. Enter the project directory
 cd your-repo-name
 
-# Install dependencies
+# 3. Install dependencies
 npm install
 
-# Run locally
+# 4. Run the project locally
 npm run dev
 
-# Build for production
+# 5. Build for production
 npm run build
 📂 Project Structure
 plaintext
 ├── src/
-│   ├── api/          # API requests
-│   ├── components/   # Common components
+│   ├── api/          # API request encapsulation
+│   ├── components/   # Reusable UI components
 │   ├── views/
 │   │   ├── admin/    # Super Admin pages
 │   │   ├── user/     # User pages
 │   │   └── Login.vue # Login page
-│   ├── router/       # Routes
-│   └── main.js       # Entry file
+│   ├── router/       # Route configuration
+│   └── main.js       # Project entry file
 ├── public/
-└── package.json
-📌 Highlights
-Dual-role permission control
-Product search by name & tags
-Complete cart & order flow
-Clean UI, suitable for class project / graduation project
+└── package.json      # Dependencies and scripts
+📌 Project Highlights
+Dual-role permission control with clear logic separation
+Product search and filtering by name & tags
+Complete shopping cart and order management workflow
+Clean and user-friendly interface, ideal for course projects / graduation projects
 📄 License
-MIT License
+This project is open source under the MIT License - see the 
+LICENSE
+File
+ file for details.
 ✉ Contact
-GitHub: your-github-url
+GitHub: 
+Your GitHub Profile URL
+File
 Email: your-email@example.com
