@@ -27,5 +27,16 @@ This is a full-stack e-commerce management system supporting two roles: User and
 - Account Info: View personal account details
 
 ---
+## 🚀 How to Run the Project Correctly
 
+### 1. Download and Install MySQL
+1. Go to MySQL official website: https://dev.mysql.com/downloads/mysql/
+2. Install MySQL 8.0 or higher
+3. Set and remember your root password
+4. Make sure MySQL service is running
+
+### 2. Create Database
+Open MySQL client and run:
+insert_sql.txt
+CREATE DATABASE e_character;
 
