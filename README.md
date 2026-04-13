@@ -18,7 +18,7 @@ This is a full-stack e-commerce management system supporting two roles: User and
 - Merchant Management: View list, add, delete merchants
 - Product Catalog: Switch merchants, view products
 - Product Management: Add products (name, price, stock, 3 tags), delete products
-- Order Management: View all user orders
+- Order Management: View all user orders, deal with the orders (Pending, Shipped, Completed)
 
 ### 🧑‍💻 User Side
 - Product Browse & Search: Display all products, search by name or tag
@@ -28,18 +28,4 @@ This is a full-stack e-commerce management system supporting two roles: User and
 
 ---
 
-## 🛠️ Tech Stack
-- Frontend: Vue3, HTML, CSS, JavaScript
-- Backend: (Fill in your backend)
-- Database: MySQL
-- Tools: Git, IDE
 
----
-
-## 🚀 Quick Start
-```bash
-git clone https://github.com/your-username/your-repo.git
-cd your-repo
-npm install
-npm run dev
-npm run build
